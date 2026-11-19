@@ -37,7 +37,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 .top .sp{flex:1}
 .pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:14px;font-variant-numeric:tabular-nums}
 .pill b{color:var(--gold)}
-.name{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;color:var(--ink);font:inherit;font-size:14px;width:200px;max-width:100%}
+.name{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;color:var(--ink);font:inherit;font-size:16px;width:200px;max-width:100%}
 .mapbox{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(#0E1B33,#14284A 60%,#1A3359)}
 .mapbox svg{display:block;width:100%;height:auto}
 .node{cursor:pointer}
@@ -114,7 +114,7 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 
 /* boss input */
 .bossin{margin-top:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
-.bossin input{min-width:0;background:#081019;color:var(--gold);border:2px solid var(--line);border-radius:14px;padding:12px 14px;font:700 clamp(15px,2.4vw,19px) var(--f-code)}
+.bossin input{min-width:0;background:#081019;color:var(--gold);border:2px solid var(--line);border-radius:14px;padding:12px 14px;font:700 clamp(16px,2.4vw,19px) var(--f-code)}
 
 /* certificate */
 .cert{max-width:700px;margin:10px auto;background:#F7F3E8;color:#1b2430;border-radius:8px;padding:10px;box-shadow:0 30px 60px -20px rgba(0,0,0,.7)}
@@ -124,7 +124,29 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:fo
 .cert .who{font:700 clamp(22px,4vw,32px) var(--f-body);color:#0b766f;border-bottom:2px solid #c9c2ad;display:inline-block;padding:0 18px 4px;margin:12px 0 14px}
 .cert .st{font-size:34px;color:#c79100;letter-spacing:4px}
 
-@media (max-width:640px){ .editor,.bossin{grid-template-columns:1fr} .editor .btns{flex-direction:row} }
+button,[role=button]{touch-action:manipulation}
+html{-webkit-tap-highlight-color:transparent;-webkit-text-size-adjust:100%}
+.stage{-webkit-touch-callout:none}
+@media (max-width:640px){
+  .editor{grid-template-columns:1fr} .bossin{gap:8px} .bossin .btn{padding:12px 14px}
+  .task .txt{flex:1 1 100%} .editor .btns{flex-direction:row} .editor .btns .btn{flex:1}
+  body{padding-block:8px 24px}
+  .hud{gap:6px;flex-wrap:nowrap;margin-bottom:8px}
+  .hud .back{padding:6px 11px} .hud .back .bt,#snd .t{display:none}
+  .hud .gt{font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1}
+  .hud .sp{display:none}
+  .hearts{gap:2px} .hearts svg{width:18px;height:18px}
+  .pill{padding:5px 9px;font-size:13px}
+  .task{padding:8px 12px;gap:6px 10px;min-height:0;margin-bottom:8px;border-radius:12px}
+  .task .lbl{font-size:10px} .task .txt{font-size:14px;min-width:0;line-height:1.35} .task .big{font-size:18px}
+  .codebar{font-size:14px;min-height:32px;padding:5px 10px;flex-basis:100%}
+  .stage{border-radius:14px}
+  .ctrl{margin-top:8px}
+  .toks{gap:7px} .tokb{padding:9px 12px;font-size:16px;min-width:44px}
+  .lanebtn{width:26vw;max-width:110px;height:58px;font-size:22px}
+  .ovc{padding:18px 16px} .ovc .how{font-size:13.5px}
+  .editor textarea{min-height:76px}
+}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 
@@ -196,18 +218,19 @@ function drawHero(c,x,y,s,t,look=1){
 function heartsHTML(n,max){ let s=""; for(let i=0;i<max;i++) s+=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4.5 6 4.5c2.2 0 3.6 1.2 6 3.6 2.4-2.4 3.8-3.6 6-3.6 3.7 0 5.6 3.9 4 7.2C19.5 16.4 12 21 12 21z" fill="${i<n?"#FF5C7A":"#2a4058"}"/></svg>`; return `<span class="hearts" aria-label="${n} жүрек">${s}</span>`; }
 
 function gameScreen(title){
-  app.innerHTML=`<div class="hud"><button class="back" id="back" type="button">← Карта</button><span class="gt">${esc(title)}</span><span class="sp"></span><span id="hearts"></span><span class="pill">Ұпай <b id="gpts">0</b></span><button class="pill" id="snd" type="button">${SOUND?"Дыбыс қосулы":"Дыбыс өшірулі"}</button></div>
+  app.innerHTML=`<div class="hud"><button class="back" id="back" type="button">← <span class="bt">Карта</span></button><span class="gt">${esc(title)}</span><span class="sp"></span><span id="hearts"></span><span class="pill">Ұпай <b id="gpts">0</b></span><button class="pill" id="snd" type="button" aria-label="Дыбыс">${SOUND?"♪":"✕"} <span class="t">${SOUND?"Дыбыс қосулы":"Дыбыс өшірулі"}</span></button></div>
   <div class="task" id="task"></div>
   <div class="stage" id="stage"><canvas id="cv"></canvas><div class="ov" id="ov" hidden></div></div>
   <div class="ctrl" id="ctrl"></div>`;
   $("#back").onclick=()=>{stopGame();showMap();};
-  $("#snd").onclick=e=>{SOUND=!SOUND;e.currentTarget.textContent=SOUND?"Дыбыс қосулы":"Дыбыс өшірулі";};
+  $("#snd").onclick=e=>{SOUND=!SOUND;e.currentTarget.innerHTML=(SOUND?"♪":"✕")+` <span class="t">${SOUND?"Дыбыс қосулы":"Дыбыс өшірулі"}</span>`;};
   window.scrollTo(0,0);
 }
-function setupCanvas(hDesk=480){
+function setupCanvas(hDesk=480,reserve=0){
   const cv=$("#cv"), dpr=Math.min(2,window.devicePixelRatio||1);
   const narrow=$("#stage").clientWidth<620;
-  const W=narrow?480:800, H=narrow?600:hDesk;
+  const W=narrow?480:800; let H=hDesk;
+  if(narrow){ const st=$("#stage"); const top=st.getBoundingClientRect().top+window.scrollY; const avail=window.innerHeight-top-reserve-14; H=Math.round(Math.max(440,Math.min(820,avail*W/Math.max(1,st.clientWidth)))); }
   cv.width=W*dpr; cv.height=H*dpr; const c=cv.getContext("2d"); c.setTransform(dpr,0,0,dpr,0,0);
   const toLocal=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height];};
   return {cv,c,W,H,narrow,toLocal};
@@ -244,9 +267,9 @@ const BRIDGE_RULES=[
 ];
 function gameBridge(){
   const G=newGame(); gameScreen("Ереже көпірі");
-  const {cv,c,W,H,narrow}=setupCanvas(460);
+  const {cv,c,W,H,narrow}=setupCanvas(460,172);
   const fx=new FX(); let hearts=3, pts=0, ri=0, placed=[], slots=[], x0=0, x1=0, sc=1, water=0, TL=30, tLeft=0, pause=true, banner=null, heroX=0, heroTarget=0, flying=[], falling=[], walkOut=false, phase="build";
-  const GY=Math.round(H*.56), PY=GY-4;
+  const GY=Math.round(H*(narrow?.46:.56)), PY=GY-4;
   setHearts(hearts,3); setPts(0);
   const R=()=>BRIDGE_RULES[ri], N=()=>R().seqs[0].length;
   function layout(){
@@ -410,7 +433,7 @@ const CATCH_PHASES=[
 ];
 function gameCatch(){
   const G=newGame(); gameScreen("Код құлауы");
-  const {cv,c,W,H,narrow,toLocal}=setupCanvas();
+  const {cv,c,W,H,narrow,toLocal}=setupCanvas(480,76);
   const fx=new FX(); let hearts=4, pts=0, phi=0, queue=[], card=null, pause=true, speed=70, glow=[], combo=0, banner=null;
   setHearts(hearts,4); setPts(0);
   const P=()=>CATCH_PHASES[Math.min(phi,CATCH_PHASES.length-1)], N=()=>P().lanes.length, laneW=()=>W/N(), BASKET=H-92;
@@ -523,6 +546,9 @@ const WORLD_CSS=`
 @keyframes no{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
 .bubble{position:absolute;bottom:100px;left:30px;width:220px;background:#fff;color:#14202A;font:600 14px/1.35 "Golos Text",sans-serif;padding:9px 12px;border-radius:14px;box-shadow:0 6px 16px rgba(0,0,0,.3)}
 .bubble::after{content:"";position:absolute;left:14px;bottom:-8px;border:8px solid transparent;border-top-color:#fff;border-bottom:0}
+.m .bubble{font-size:19px;width:270px;bottom:104px}
+.m .lbl{font-size:16px;padding:3px 8px}
+.m .house .tag{font-size:16px}
 .spark{position:absolute;width:8px;height:8px;border-radius:50%;background:#FFC94A;pointer-events:none;animation:spark 1s ease-out forwards}
 @keyframes spark{to{transform:translate(var(--dx),var(--dy));opacity:0}}
 `;
@@ -531,7 +557,7 @@ function worldHTML(){
   return `<div class="vp"><div class="world" id="world">${stars}
   <div class="hill" style="left:-80px;width:420px;height:140px"></div><div class="hill" style="left:300px;width:520px;height:200px"></div>
   <div class="ground" style="left:0;width:1130px"></div><div class="tree" style="left:60px"></div><div class="tree" style="left:240px"></div>
-  <div class="sun"></div><span class="lbl" style="left:530px;top:40px">.sun</span>
+  <div class="sun"></div><span class="lbl" style="left:410px;top:40px">.sun</span>
   <div class="river" style="left:1130px;width:310px"></div><div class="bridge" style="left:1122px;bottom:66px;width:318px"></div><span class="lbl" style="left:1240px;top:300px">.bridge</span>
   <div class="ground" style="left:1440px;width:3360px"></div>
   <div class="house" style="left:1780px"><div class="tag">Көршінің үйі</div><div class="door" id="old"></div></div><span class="lbl" style="left:1830px;top:120px">#old</span>
@@ -542,13 +568,13 @@ function worldHTML(){
   <div class="gem" style="left:3420px;bottom:180px"></div><div class="rock" style="left:3500px;bottom:110px"></div><div class="gem g2" style="left:3580px;bottom:230px"></div>
   <div class="gem" style="left:3680px;bottom:130px"></div><div class="rock" style="left:3760px;bottom:200px"></div><div class="gem g2" style="left:3840px;bottom:150px"></div>
   <span class="lbl" style="left:3420px;top:110px">.gem</span><span class="lbl" style="left:3760px;top:250px">.rock</span>
-  <p class="note" style="left:4130px">Бұл жай жазу (.note)</p>
+  <p class="note" style="left:4240px;bottom:300px">Бұл жай жазу (.note)</p>
   <div class="chest" style="left:4400px"><div class="lid"></div><p>Алтын осында!</p></div><span class="lbl" style="left:4440px;top:200px">.chest p</span>
   <div class="hero" id="hero" style="left:110px"><div class="br">{ }</div><div class="bd"></div><div class="vs"></div><div class="lg l1"></div><div class="lg l2"></div><div class="bubble" id="bub"></div></div>
   </div></div>`;
 }
 // fixed positions per station
-const SUN_POS="left:560px;top:50px";
+const SUN_POS="left:440px;top:50px";
 function gameBuilder(){
   const G=newGame(); gameScreen("Шебер саяхаты");
   const stage=$("#stage"); stage.innerHTML=`<div class="scene"><div class="host" id="host"></div></div><div class="ov" id="ov" hidden></div>`;
@@ -557,7 +583,8 @@ function gameBuilder(){
   sh.innerHTML=`<style>${WORLD_CSS}</style><style id="solved"></style><style id="user"></style>${worldHTML()}`;
   $(".sun",sh).setAttribute("style",SUN_POS);
   const vp=$(".vp",sh), world=$("#world",sh), hero=$("#hero",sh), bub=$("#bub",sh), uStyle=$("#user",sh), sStyle=$("#solved",sh);
-  const fit=()=>{ vp.style.transform=`scale(${$("#host").clientWidth/800})`; }; fit();
+  const MOB=$("#host").clientWidth<620, VW=MOB?560:800; if(MOB){ $(".scene").style.aspectRatio="560/420"; vp.classList.add("m"); }
+  const fit=()=>{ vp.style.transform=`scale(${$("#host").clientWidth/VW})`; }; fit();
   const ro=new ResizeObserver(fit); ro.observe($("#host")); G.offs.push(()=>ro.disconnect());
   let si=0, fails=0, pts=0, totalFails=0, solved=[], baseline=null; setPts(0);
   $("#task").outerHTML=`<div class="task" id="task"></div>`;
@@ -565,7 +592,7 @@ function gameBuilder(){
   const ta=$("#code"), msg=$("#msg");
   const say=t=>{ bub.textContent=t; bub.style.display=t?"block":"none"; };
   const S=()=>STATIONS[si];
-  function heroX(i){ return [110,1010,1700,2440,3260,4180][i]; }
+  function heroX(i){ return [110,1010,1700,2440,3330,4180][i]; }
   function expected(prop,val){ const r=document.createElement("span"); r.style.borderStyle="solid"; r.style.setProperty(prop,val); world.appendChild(r); const v=getComputedStyle(r).getPropertyValue(prop); r.remove(); return v; }
   function snapshot(){ const props=S().checks.map(c=>c[1]); const m=new Map(); S().keep.forEach(sel=>$$(sel,world).forEach(el=>{ const cs=getComputedStyle(el); m.set(el,props.map(p=>cs.getPropertyValue(p))); })); return m; }
   function stationUI(){
@@ -573,8 +600,8 @@ function gameBuilder(){
     ta.value=""; ta.disabled=false; $("#run").disabled=false; msg.textContent="Код жазғанда нәтиже әлемде бірден көрінеді."; msg.className="msg"; fails=0; uStyle.textContent="";
     baseline=snapshot(); say(S().say);
   }
-  function goTo(i){ hero.classList.add("walk"); say(""); hero.style.left=heroX(i)+"px"; world.style.transform=`translateX(${-Math.max(0,heroX(i)-110)}px)`; later(()=>{ hero.classList.remove("walk"); if(si<STATIONS.length) stationUI(); },1850); }
-  function sparks(el,n=24){ const r=el.getBoundingClientRect(), w=world.getBoundingClientRect(), k=800/$("#host").clientWidth; const x=(r.left-w.left)*k+r.width*k/2, y=(r.top-w.top)*k+r.height*k/2;
+  function goTo(i){ hero.classList.add("walk"); say(""); hero.style.left=heroX(i)+"px"; world.style.transform=`translateX(${-Math.max(0,heroX(i)-(MOB?60:110))}px)`; later(()=>{ hero.classList.remove("walk"); if(si<STATIONS.length) stationUI(); },1850); }
+  function sparks(el,n=24){ const r=el.getBoundingClientRect(), w=world.getBoundingClientRect(), k=VW/$("#host").clientWidth; const x=(r.left-w.left)*k+r.width*k/2, y=(r.top-w.top)*k+r.height*k/2;
     for(let i=0;i<n;i++){ const s=document.createElement("i"); s.className="spark"; s.style.left=x+"px"; s.style.top=y+"px"; s.style.setProperty("--dx",rand(-120,120)+"px"); s.style.setProperty("--dy",rand(-120,60)+"px"); s.style.background=pick(["#FFC94A","#2DD4BF","#FF5C7A","#fff"]); world.appendChild(s); later(()=>s.remove(),1000); } }
   on(ta,"input",()=>{ uStyle.textContent=ta.value; });
   on(ta,"keydown",e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); check(); } });
@@ -616,7 +643,7 @@ const BUGS=[
 const normCSS=s=>s.toLowerCase().replace(/\s+/g," ").replace(/\s*([{}:;,])\s*/g,"$1").replace(/;}/g,"}").replace(/;$/,"").trim();
 function gameBoss(){
   const G=newGame(); gameScreen("Қате монстрі");
-  const {cv,c,W,H,narrow}=setupCanvas(420);
+  const {cv,c,W,H,narrow}=setupCanvas(420,130);
   const fx=new FX(); const MAXHP=8; let hp=MAXHP, hearts=3, pts=0, queue=shuffle(BUGS).slice(0,MAXHP), cur=null, timeLeft=0, TL=40, pause=true, shots=[], flinch=0, attack=0, wrongs=0, eyeT=0;
   setHearts(hearts,3); setPts(0);
   $("#ctrl").outerHTML=`<div id="ctrl"><div class="bossin"><input id="fix" type="text" spellcheck="false" autocomplete="off" aria-label="Түзетілген CSS"><button class="btn gold" id="fire" type="button">Атқылау ⚡</button></div><div class="msg" id="msg"></div></div>`;
