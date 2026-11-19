@@ -1,0 +1,750 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>CSS Шеберханасы</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Golos+Text:wght@400;500;600;700&family=JetBrains+Mono:wght@500;700;800&family=Unbounded:wght@600;800&display=swap">
+<style>
+/* Layout: a night-sky game world. Map hub (SVG islands on a path) -> full-width game stage (canvas or live DOM scene) with a HUD above and touch controls below. Deliberately single dark theme. */
+:root{
+  color-scheme:dark;
+  --bg:#0A1320; --bg2:#0F1C2E; --panel:#132539; --line:#24405A; --ink:#EAF2F7; --muted:#90A8BB;
+  --teal:#2DD4BF; --gold:#FFC94A; --rose:#FF5C7A; --violet:#9B8CFF; --sky:#6EC1FF; --green:#7BE07B;
+  --f-display:"Unbounded","Golos Text",system-ui,sans-serif;
+  --f-body:"Golos Text",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-code:"JetBrains Mono",ui-monospace,Menlo,Consolas,monospace;
+}
+*{box-sizing:border-box}
+html,body{background:var(--bg)}
+body{color:var(--ink);font:16px/1.5 var(--f-body);
+  background:radial-gradient(1200px 600px at 70% -10%,#1B2F52 0,transparent 60%),var(--bg);
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px 40px;min-height:100%}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible,[role=button]:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.wrap{max-width:980px;margin:0 auto}
+
+.btn{border:0;border-radius:12px;padding:12px 22px;font:700 15px var(--f-body);background:var(--teal);color:#062421;box-shadow:0 4px 0 #148a7c;transition:transform .08s,box-shadow .08s}
+.btn:active{transform:translateY(3px);box-shadow:0 1px 0 #148a7c}
+.btn.gold{background:var(--gold);color:#2b1d00;box-shadow:0 4px 0 #b88a1c}
+.btn.ghost{background:transparent;color:var(--ink);border:2px solid var(--line);box-shadow:none}
+.btn[disabled]{opacity:.45;cursor:not-allowed}
+
+/* ---------- map ---------- */
+.top{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.logo{font:800 clamp(20px,3.6vw,30px)/1.05 var(--f-display);letter-spacing:-.01em}
+.logo b{color:var(--teal)}
+.top .sp{flex:1}
+.pill{display:inline-flex;align-items:center;gap:6px;background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:6px 13px;font-size:14px;font-variant-numeric:tabular-nums}
+.pill b{color:var(--gold)}
+.name{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;color:var(--ink);font:inherit;font-size:14px;width:200px;max-width:100%}
+.mapbox{position:relative;border-radius:22px;overflow:hidden;border:1px solid var(--line);background:linear-gradient(#0E1B33,#14284A 60%,#1A3359)}
+.mapbox svg{display:block;width:100%;height:auto}
+.node{cursor:pointer}
+.node .isl{transition:transform .25s}
+.node:hover .isl,.node:focus-visible .isl{transform:translateY(-6px)}
+.node.locked{cursor:not-allowed;opacity:.55}
+.node text{font-family:var(--f-display);font-weight:800}
+.float{animation:float 4s ease-in-out infinite}
+@keyframes float{50%{transform:translateY(-8px)}}
+.twinkle{animation:tw 3s ease-in-out infinite}
+@keyframes tw{50%{opacity:.2}}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-top:14px}
+.gcard{text-align:left;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 14px;display:flex;flex-direction:column;gap:3px;min-width:0}
+.gcard:hover:not([disabled]){border-color:var(--teal)}
+.gcard[disabled]{opacity:.5;cursor:not-allowed}
+.gcard .n{font:800 14px var(--f-display)}
+.gcard .d{font-size:13px;color:var(--muted)}
+.gcard .s{color:var(--gold);letter-spacing:2px}
+.foot{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-top:14px;color:var(--muted);font-size:13px}
+.link{background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;font-size:13px}
+
+/* ---------- game screen ---------- */
+.hud{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px}
+.hud .back{background:var(--panel);border:1px solid var(--line);border-radius:999px;padding:7px 14px;font-size:14px}
+.hud .gt{font:800 clamp(16px,2.6vw,22px) var(--f-display)}
+.hud .sp{flex:1}
+.hearts{display:flex;gap:4px}
+.hearts svg{width:26px;height:26px}
+.task{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:12px 16px;margin-bottom:10px;min-height:56px;display:flex;align-items:center;gap:14px;flex-wrap:wrap}
+.task .lbl{font:700 11px var(--f-code);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+.task .big{font:800 clamp(18px,3vw,26px) var(--f-code);color:var(--gold)}
+.task .txt{font-size:15.5px;flex:1;min-width:200px}
+.codebar{font:700 clamp(15px,2.4vw,20px) var(--f-code);background:#081019;border-radius:10px;padding:8px 12px;min-height:42px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;flex:1 1 280px}
+.codebar .t{color:var(--teal)}
+.codebar .ghost{color:#3c5670}
+.codebar .cur{width:10px;height:22px;background:var(--gold);animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+.stage{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--line);background:#081019;user-select:none;-webkit-user-select:none}
+.stage canvas{display:block;width:100%;height:auto;touch-action:none}
+.ov{position:absolute;inset:0;display:grid;place-items:center;background:rgba(6,12,22,.72);backdrop-filter:blur(3px);padding:16px;z-index:5}
+.ov[hidden]{display:none}
+.ovc{max-width:520px;text-align:center;background:var(--panel);border:1px solid var(--line);border-radius:20px;padding:22px 22px 20px;box-shadow:0 30px 60px -20px rgba(0,0,0,.7)}
+.ovc h2{font:800 clamp(20px,3.4vw,28px)/1.15 var(--f-display);margin:0 0 8px;text-wrap:balance}
+.ovc p{color:var(--muted);margin:0 0 14px}
+.ovc .how{text-align:left;font-size:14.5px;color:var(--ink);background:#0B1828;border-radius:12px;padding:10px 14px;margin:0 0 16px;list-style:none}
+.ovc .how li{padding:3px 0}
+.ovc .how code{color:var(--gold);font-family:var(--f-code)}
+.ovc .row{display:flex;gap:10px;justify-content:center;flex-wrap:wrap}
+.ovc .stars{font-size:46px;letter-spacing:6px;color:var(--gold);line-height:1;margin:4px 0 8px}
+.ovc .stars i{font-style:normal;color:#2a4058}
+.ctrl{display:flex;justify-content:center;gap:10px;margin-top:10px;flex-wrap:wrap}
+.pad{display:grid;grid-template-columns:repeat(3,58px);grid-template-rows:repeat(2,52px);gap:6px}
+.pad button,.lanebtn{background:var(--panel);border:1px solid var(--line);border-radius:12px;font:800 20px var(--f-code);touch-action:manipulation}
+.pad button:active,.lanebtn:active{background:var(--line)}
+.lanebtn{width:84px;height:52px}
+.toks{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:760px}
+.tokb{min-width:56px;padding:12px 16px;border-radius:12px;border:0;background:linear-gradient(#C98A4B,#8A5426);color:#FFF4DC;font:800 19px var(--f-code);box-shadow:0 4px 0 #5A3416;touch-action:manipulation}
+.tokb:active{transform:translateY(3px);box-shadow:0 1px 0 #5A3416}
+.tokb.used{visibility:hidden}
+.tokb.bad{background:var(--rose);box-shadow:0 4px 0 #a3283f}
+.shake{animation:shk .35s}
+@keyframes shk{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.toast{position:absolute;left:50%;top:14px;transform:translateX(-50%);background:var(--rose);color:#fff;font-weight:700;padding:8px 14px;border-radius:10px;font-size:14.5px;z-index:4;max-width:90%;text-align:center;pointer-events:none;transition:opacity .3s}
+.toast.ok{background:var(--teal);color:#062421}
+
+/* builder */
+.scene{position:relative;width:100%;aspect-ratio:800/420}
+.scene .host{position:absolute;inset:0}
+.editor{margin-top:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:stretch}
+.editor textarea{width:100%;min-height:96px;resize:vertical;background:#081019;color:var(--gold);border:2px solid var(--line);border-radius:14px;padding:12px 14px;font:600 16px/1.6 var(--f-code)}
+.editor .btns{display:flex;flex-direction:column;gap:8px}
+.msg{min-height:22px;margin-top:8px;font-size:14.5px;color:var(--muted)}
+.msg.err{color:var(--rose)}.msg.ok{color:var(--teal)}
+
+/* boss input */
+.bossin{margin-top:10px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px}
+.bossin input{min-width:0;background:#081019;color:var(--gold);border:2px solid var(--line);border-radius:14px;padding:12px 14px;font:700 clamp(15px,2.4vw,19px) var(--f-code)}
+
+/* certificate */
+.cert{max-width:700px;margin:10px auto;background:#F7F3E8;color:#1b2430;border-radius:8px;padding:10px;box-shadow:0 30px 60px -20px rgba(0,0,0,.7)}
+.cert-in{border:2px solid #1b2430;padding:clamp(18px,5vw,40px);text-align:center}
+.cert .sm{font:700 12px var(--f-code);letter-spacing:.14em;text-transform:uppercase;color:#6b7280}
+.cert h2{font:800 clamp(26px,5vw,42px)/1.1 var(--f-display);margin:12px 0 6px}
+.cert .who{font:700 clamp(22px,4vw,32px) var(--f-body);color:#0b766f;border-bottom:2px solid #c9c2ad;display:inline-block;padding:0 18px 4px;margin:12px 0 14px}
+.cert .st{font-size:34px;color:#c79100;letter-spacing:4px}
+
+@media (max-width:640px){ .editor,.bossin{grid-template-columns:1fr} .editor .btns{flex-direction:row} }
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div class="wrap" id="app"></div>
+
+<script>
+(function(){
+"use strict";
+const $=(s,r=document)=>r.querySelector(s), $$=(s,r=document)=>[...r.querySelectorAll(s)];
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const rand=(a,b)=>a+Math.random()*(b-a), pick=a=>a[Math.floor(Math.random()*a.length)];
+const app=$("#app");
+
+/* ================= SAVE ================= */
+const KEY="css-sheberhanasy-v3";
+let SAVE={name:"",score:0,stars:{}};
+try{const s=JSON.parse(localStorage.getItem(KEY)||"null"); if(s&&typeof s==="object") SAVE=Object.assign(SAVE,s);}catch(e){}
+const persist=()=>{try{localStorage.setItem(KEY,JSON.stringify(SAVE));}catch(e){}};
+
+/* ================= SOUND ================= */
+let SOUND=true, actx=null;
+function sfx(name){
+  if(!SOUND) return;
+  try{
+    actx=actx||new (window.AudioContext||window.webkitAudioContext)();
+    const P={eat:[[520,.06,"square"],[780,.08,"square"]],pop:[[880,.05,"triangle"],[1320,.07,"triangle"]],bad:[[220,.14,"sawtooth"],[150,.2,"sawtooth"]],
+      win:[[523,.1,"triangle"],[659,.1,"triangle"],[784,.1,"triangle"],[1047,.3,"triangle"]],shoot:[[260,.06,"square"],[520,.08,"square"]],
+      hit:[[110,.25,"sawtooth"]],tick:[[700,.04,"sine"]],land:[[330,.06,"triangle"],[660,.08,"triangle"]],boom:[[90,.3,"sawtooth"],[60,.3,"square"]]}[name]||[];
+    let t=actx.currentTime;
+    P.forEach(([f,d,type])=>{const o=actx.createOscillator(),g=actx.createGain();o.type=type;o.frequency.value=f;
+      g.gain.setValueAtTime(.0001,t);g.gain.exponentialRampToValueAtTime(name==="bad"||name==="hit"||name==="boom"?.07:.1,t+.015);g.gain.exponentialRampToValueAtTime(.0001,t+d);
+      o.connect(g).connect(actx.destination);o.start(t);o.stop(t+d+.02);t+=d*.85;});
+  }catch(e){}
+}
+
+/* ================= ENGINE ================= */
+let GAME=null;
+function stopGame(){ if(!GAME) return; cancelAnimationFrame(GAME.raf); GAME.timers.forEach(clearTimeout); GAME.offs.forEach(f=>f()); GAME=null; }
+function newGame(){ stopGame(); GAME={raf:0,timers:[],offs:[],running:false}; return GAME; }
+function on(el,ev,fn,opt){ el.addEventListener(ev,fn,opt); GAME.offs.push(()=>el.removeEventListener(ev,fn,opt)); }
+function later(fn,ms){ GAME.timers.push(setTimeout(fn,ms)); }
+function loop(step){ GAME.step=step; let last=performance.now(); const g=GAME; const f=now=>{ if(GAME!==g) return; const dt=Math.min(.05,(now-last)/1000); last=now; step(dt,now/1000); g.raf=requestAnimationFrame(f); }; g.raf=requestAnimationFrame(f); }
+
+function rr(c,x,y,w,h,r){ c.beginPath(); c.moveTo(x+r,y); c.arcTo(x+w,y,x+w,y+h,r); c.arcTo(x+w,y+h,x,y+h,r); c.arcTo(x,y+h,x,y,r); c.arcTo(x,y,x+w,y,r); c.closePath(); }
+class FX{
+  constructor(){this.p=[];this.t=[];}
+  burst(x,y,col,n=20,sp=240){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,v=rand(.3,1)*sp;this.p.push({x,y,vx:Math.cos(a)*v,vy:Math.sin(a)*v,life:rand(.4,.9),max:.9,col,r:rand(2,5)});}}
+  text(x,y,s,col="#FFC94A",size=22){this.t.push({x,y,s,col,size,life:1});}
+  update(dt){this.p.forEach(p=>{p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=300*dt;p.life-=dt;});this.p=this.p.filter(p=>p.life>0);
+    this.t.forEach(t=>{t.y-=40*dt;t.life-=dt*.9;});this.t=this.t.filter(t=>t.life>0);}
+  draw(c){this.p.forEach(p=>{c.globalAlpha=Math.max(0,p.life/p.max);c.fillStyle=p.col;c.beginPath();c.arc(p.x,p.y,p.r,0,7);c.fill();});
+    c.globalAlpha=1;this.t.forEach(t=>{c.globalAlpha=Math.max(0,Math.min(1,t.life*1.5));c.font=`800 ${t.size}px Unbounded, sans-serif`;c.textAlign="center";c.fillStyle=t.col;c.strokeStyle="rgba(0,0,0,.5)";c.lineWidth=4;c.strokeText(t.s,t.x,t.y);c.fillText(t.s,t.x,t.y);});c.globalAlpha=1;}
+}
+function drawHero(c,x,y,s,t,look=1){
+  const bob=Math.sin(t*6)*2*s;
+  c.save();c.translate(x,y);
+  c.fillStyle="rgba(0,0,0,.3)";c.beginPath();c.ellipse(0,0,24*s,6*s,0,0,7);c.fill();
+  c.translate(0,bob);
+  c.fillStyle="#1b8f83";c.fillRect(-15*s,-14*s,9*s,14*s);c.fillRect(6*s,-14*s,9*s,14*s);
+  const g=c.createLinearGradient(0,-64*s,0,-12*s);g.addColorStop(0,"#5EEAD4");g.addColorStop(1,"#14B8A6");
+  c.fillStyle=g;rr(c,-24*s,-64*s,48*s,52*s,16*s);c.fill();
+  c.fillStyle="#0A1A28";rr(c,-18*s,-56*s,36*s,22*s,9*s);c.fill();
+  c.fillStyle="#8FF7FF";const blink=(Math.sin(t*1.7)>.97)?.2:1;
+  c.beginPath();c.ellipse((-7+look*2)*s,-45*s,3.5*s,4.5*s*blink,0,0,7);c.ellipse((7+look*2)*s,-45*s,3.5*s,4.5*s*blink,0,0,7);c.fill();
+  c.fillStyle="#FFC94A";c.font=`800 ${18*s}px "JetBrains Mono", monospace`;c.textAlign="center";c.textBaseline="alphabetic";c.fillText("{ }",0,-70*s);
+  c.restore();
+}
+function heartsHTML(n,max){ let s=""; for(let i=0;i<max;i++) s+=`<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21s-7.5-4.6-10-9.3C.4 8.4 2.3 4.5 6 4.5c2.2 0 3.6 1.2 6 3.6 2.4-2.4 3.8-3.6 6-3.6 3.7 0 5.6 3.9 4 7.2C19.5 16.4 12 21 12 21z" fill="${i<n?"#FF5C7A":"#2a4058"}"/></svg>`; return `<span class="hearts" aria-label="${n} жүрек">${s}</span>`; }
+
+function gameScreen(title){
+  app.innerHTML=`<div class="hud"><button class="back" id="back" type="button">← Карта</button><span class="gt">${esc(title)}</span><span class="sp"></span><span id="hearts"></span><span class="pill">Ұпай <b id="gpts">0</b></span><button class="pill" id="snd" type="button">${SOUND?"Дыбыс қосулы":"Дыбыс өшірулі"}</button></div>
+  <div class="task" id="task"></div>
+  <div class="stage" id="stage"><canvas id="cv"></canvas><div class="ov" id="ov" hidden></div></div>
+  <div class="ctrl" id="ctrl"></div>`;
+  $("#back").onclick=()=>{stopGame();showMap();};
+  $("#snd").onclick=e=>{SOUND=!SOUND;e.currentTarget.textContent=SOUND?"Дыбыс қосулы":"Дыбыс өшірулі";};
+  window.scrollTo(0,0);
+}
+function setupCanvas(hDesk=480){
+  const cv=$("#cv"), dpr=Math.min(2,window.devicePixelRatio||1);
+  const narrow=$("#stage").clientWidth<620;
+  const W=narrow?480:800, H=narrow?600:hDesk;
+  cv.width=W*dpr; cv.height=H*dpr; const c=cv.getContext("2d"); c.setTransform(dpr,0,0,dpr,0,0);
+  const toLocal=e=>{const r=cv.getBoundingClientRect();return [(e.clientX-r.left)*W/r.width,(e.clientY-r.top)*H/r.height];};
+  return {cv,c,W,H,narrow,toLocal};
+}
+function overlay(html,buttons){
+  const ov=$("#ov"); ov.hidden=false;
+  ov.innerHTML=`<div class="ovc">${html}<div class="row">${buttons.map((b,i)=>`<button class="btn ${b.cls||""}" data-i="${i}" type="button">${b.label}</button>`).join("")}</div></div>`;
+  buttons.forEach((b,i)=>$(`.ovc [data-i="${i}"]`,ov).onclick=()=>{ov.hidden=true;b.fn();});
+  const first=$(".ovc .btn",ov); if(first) first.focus({preventScroll:true});
+}
+function setPts(p){ const el=$("#gpts"); if(el) el.textContent=p; }
+function setHearts(n,max){ const el=$("#hearts"); if(el) el.innerHTML=heartsHTML(n,max); }
+function toast(msg,ok){ const st=$("#stage"); if(!st) return; let t=$(".toast",st); if(!t){t=document.createElement("div");t.className="toast";st.appendChild(t);} t.className="toast"+(ok?" ok":""); t.textContent=msg; t.style.opacity=1; clearTimeout(t._h); t._h=setTimeout(()=>t.style.opacity=0,1800); }
+
+function finishGame(id,stars,pts,again,extra=""){
+  SAVE.stars[id]=Math.max(SAVE.stars[id]||0,stars); SAVE.score+=pts; persist(); sfx("win");
+  const st="★".repeat(stars)+`<i>${"★".repeat(3-stars)}</i>`;
+  const allDone=GAMES.every(g=>SAVE.stars[g.id]);
+  overlay(`<div class="stars">${st}</div><h2>Жеңіс!</h2><p>+${pts} ұпай. ${extra}</p>`,
+    [{label:"Картаға",cls:"gold",fn:()=>{stopGame();showMap();}},{label:"Қайта ойнау",cls:"ghost",fn:again}].concat(allDone?[{label:"Сертификат",fn:()=>{stopGame();certificate();}}]:[]));
+}
+function loseGame(again,why){
+  sfx("boom");
+  overlay(`<h2>Жүрек таусылды</h2><p>${esc(why||"Тағы бір рет байқап көр, сен міндетті түрде өтесің!")}</p>`,[{label:"Қайта бастау",fn:again},{label:"Картаға",cls:"ghost",fn:()=>{stopGame();showMap();}}]);
+}
+
+/* ================= GAME 1: RULE BRIDGE ================= */
+const BRIDGE_RULES=[
+  {task:"Барлық абзацты көк (blue) қыл", show:true, seqs:[["p","{","color",":","blue",";","}"]], bad:["(","=","\"blue\""]},
+  {task:"id=\"pink\" абзацты maroon түске боя", seqs:[["#pink","{","color",":","maroon",";","}"]], bad:[".pink","=",")"]},
+  {task:"blue сыныбындағы элементтердің қаріп өлшемі 20px болсын", seqs:[[".blue","{","font-size",":","20px",";","}"]], bad:["#blue","[",","]},
+  {task:"Тек p ішіндегі b тегін navy түске боя", seqs:[["p b","{","color",":","navy",";","}"]], bad:["p,b","=","("]},
+  {task:"h1 тақырыбы қызыл (red) және 30px болсын", seqs:[["h1","{","color",":","red",";","font-size",":","30px",";","}"],["h1","{","font-size",":","30px",";","color",":","red",";","}"]], bad:[",","=","("]}
+];
+function gameBridge(){
+  const G=newGame(); gameScreen("Ереже көпірі");
+  const {cv,c,W,H,narrow}=setupCanvas(460);
+  const fx=new FX(); let hearts=3, pts=0, ri=0, placed=[], slots=[], x0=0, x1=0, sc=1, water=0, TL=30, tLeft=0, pause=true, banner=null, heroX=0, heroTarget=0, flying=[], falling=[], walkOut=false, phase="build";
+  const GY=Math.round(H*.56), PY=GY-4;
+  setHearts(hearts,3); setPts(0);
+  const R=()=>BRIDGE_RULES[ri], N=()=>R().seqs[0].length;
+  function layout(){
+    c.font=`800 18px "JetBrains Mono", monospace`;
+    const ws=R().seqs[0].map(s=>Math.max(44,c.measureText(s).width+22));
+    const total=ws.reduce((a,b)=>a+b,0)+(ws.length-1)*4, avail=W-(narrow?90:200);
+    sc=Math.min(1,avail/total); x0=(W-total*sc)/2; x1=x0+total*sc;
+    let x=x0; slots=ws.map(w=>{ const s={x,w:w*sc}; x+=(w+4)*sc; return s; });
+  }
+  function taskUI(){
+    const seq=R().seqs[0];
+    $("#task").innerHTML=`<div><div class="lbl">Көпір ${ri+1}/${BRIDGE_RULES.length}</div><div class="txt">${esc(R().task)}</div></div>
+      <div class="codebar">${placed.map(t=>`<span class="t">${esc(t)}</span>`).join("")}<span class="cur"></span>${R().show?seq.slice(placed.length).map(t=>`<span class="ghost">${esc(t)}</span>`).join(""):""}</div>`;
+  }
+  function buttons(){
+    const pool=shuffle(R().seqs[0].concat(R().bad));
+    $("#ctrl").innerHTML=`<div class="toks">${pool.map((t,i)=>`<button class="tokb" data-t="${esc(t)}" type="button">${esc(t)}</button>`).join("")}</div>`;
+    $$("#ctrl .tokb").forEach(b=>on(b,"click",()=>pickTok(b)));
+  }
+  function startBridge(){ placed=[]; flying=[]; layout(); heroX=heroTarget=x0-40; walkOut=false; phase="build"; TL=22+N()*3; tLeft=TL; taskUI(); buttons(); banner={a:`Көпір ${ri+1}`,b:R().task,t:1.8}; pause=false; }
+  function okNext(tok){ const n=placed.length; return R().seqs.some(s=>s.slice(0,n).every((v,i)=>v===placed[i]) && s[n]===tok); }
+  function pickTok(b){
+    if(pause||phase!=="build"||(banner&&banner.t>0)) return; const tok=b.dataset.t; const r=b.getBoundingClientRect(), cr=cv.getBoundingClientRect();
+    const sx=(r.left+r.width/2-cr.left)*W/cr.width, sy=H+20;
+    if(okNext(tok)){
+      const i=placed.length; placed.push(tok); b.disabled=true; b.classList.add("used");
+      flying.push({i,tok,x:sx,y:sy,t:0}); sfx("land"); pts+=10; setPts(pts); taskUI();
+      if(placed.length===N()){ phase="done"; const bonus=20+Math.round(tLeft); later(()=>{ pts+=bonus; setPts(pts); fx.text(W/2,GY-120,`Көпір дайын! +${bonus}`,"#7BE07B",28); sfx("win"); walkOut=true; heroTarget=W+40; },500);
+        later(()=>{ ri++; if(ri>=BRIDGE_RULES.length) finishGame("bridge",hearts,pts,()=>gameBridge(),"Барлық ережені дұрыс құрастырып, 5 көпір салдың!"); else startBridge(); },2600); }
+    } else {
+      b.classList.remove("shake"); void b.offsetWidth; b.classList.add("shake","bad"); later(()=>b.classList.remove("bad"),600);
+      const s=slots[Math.min(placed.length,slots.length-1)]; falling.push({tok,x:s.x+s.w/2,y:PY-30,vy:-120,rot:0,vr:rand(-4,4),w:s.w});
+      sfx("bad"); hurt(`«${tok}» бұл жерге келмейді!`);
+    }
+  }
+  function hurt(msg){ hearts--; setHearts(hearts,3); toast(msg); if(hearts<=0){ pause=true; later(()=>loseGame(()=>gameBridge(),"Су көпірді басып қалды. Ереже ретін есіңе алып, қайта байқап көр!"),700); } }
+  function flood(){
+    sfx("boom"); placed.forEach((t,i)=>{ const s=slots[i]; falling.push({tok:t,x:s.x+s.w/2,y:PY,vy:-60,rot:0,vr:rand(-3,3),w:s.w}); });
+    placed=[]; flying=[]; heroTarget=heroX=x0-40; hurt("Су көтеріліп кетті! Көпірді қайта сал."); if(hearts>0){ tLeft=TL; taskUI(); buttons(); }
+  }
+  function plank(x,y,w,tok,rot=0,alpha=1){
+    c.save(); c.globalAlpha=alpha; c.translate(x,y); c.rotate(rot);
+    const g=c.createLinearGradient(0,-14,0,14); g.addColorStop(0,"#C98A4B"); g.addColorStop(1,"#8A5426"); c.fillStyle=g; rr(c,-w/2,-14,w,28,5); c.fill();
+    c.strokeStyle="#5A3416"; c.lineWidth=2; c.stroke(); c.fillStyle="#3B210C"; c.beginPath(); c.arc(-w/2+6,0,2,0,7); c.arc(w/2-6,0,2,0,7); c.fill();
+    c.fillStyle="#FFF4DC"; c.font=`800 ${Math.round(17*Math.max(.75,sc))}px "JetBrains Mono", monospace`; c.textAlign="center"; c.textBaseline="middle"; c.fillText(tok,0,1);
+    c.restore();
+  }
+  function draw(T){
+    const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#2A1B4D"); g.addColorStop(.5,"#C2557A"); g.addColorStop(1,"#F2A65A"); c.fillStyle=g; c.fillRect(0,0,W,H);
+    c.fillStyle="#FFE3A3"; c.beginPath(); c.arc(W*.78,H*.3,40,0,7); c.fill();
+    c.fillStyle="#3B2557"; c.beginPath(); c.moveTo(0,GY); [[.1,.3],[.25,.42],[.4,.25],[.55,.4],[.7,.22],[.85,.38],[1,.28]].forEach(([a,b])=>c.lineTo(W*a,H*b)); c.lineTo(W,GY); c.fill();
+    const wy=GY+40+(H-GY-40)*(tLeft/TL); 
+    const wg=c.createLinearGradient(0,wy,0,H); wg.addColorStop(0,"#3FA9F5"); wg.addColorStop(1,"#0B3B73"); c.fillStyle=wg;
+    c.beginPath(); c.moveTo(x0-10,H); for(let x=x0-10;x<=x1+10;x+=8) c.lineTo(x,wy+Math.sin(x/18+T*4)*4); c.lineTo(x1+10,H); c.fill();
+    c.fillStyle="#1A0F2A"; c.fillRect(x0-6,GY,x1-x0+12,H-GY); c.globalCompositeOperation="source-over";
+    c.fillStyle=wg; c.beginPath(); c.moveTo(x0,H); for(let x=x0;x<=x1;x+=8) c.lineTo(x,wy+Math.sin(x/18+T*4)*4); c.lineTo(x1,H); c.fill();
+    [[0,x0],[x1,W]].forEach(([a,b])=>{ c.fillStyle="#5B3A22"; c.fillRect(a,GY,b-a,H-GY); c.fillStyle="#6FCF6F"; c.fillRect(a,GY-8,b-a,12); c.fillStyle="#4A2E1A"; for(let y=GY+20;y<H;y+=28) c.fillRect(a+((y/28)%2?10:30),y,b-a-40>0?Math.min(40,b-a-40):0,6); });
+    c.fillStyle="#3B210C"; c.fillRect(W-38,GY-90,5,90); c.fillStyle="#FFC94A"; c.beginPath(); c.moveTo(W-33,GY-90); c.lineTo(W-33+28+Math.sin(T*5)*3,GY-78); c.lineTo(W-33,GY-66); c.fill();
+    c.fillStyle="#3B210C"; c.font=`800 14px "JetBrains Mono", monospace`; c.textAlign="center"; c.fillText("}",W-20,GY-96);
+    slots.forEach((s,i)=>{ if(i>=placed.length || flying.some(f=>f.i===i)){ c.strokeStyle="rgba(255,255,255,.45)"; c.setLineDash([5,5]); c.lineWidth=2; rr(c,s.x,PY-14,s.w,28,5); c.stroke(); c.setLineDash([]); } });
+    placed.forEach((t,i)=>{ if(flying.some(f=>f.i===i)) return; const s=slots[i]; plank(s.x+s.w/2,PY,s.w,t); });
+    flying.forEach(f=>{ const s=slots[f.i]; const p=Math.min(1,f.t), e=1-Math.pow(1-p,3); const x=f.x+(s.x+s.w/2-f.x)*e, y=f.y+(PY-f.y)*e-Math.sin(p*Math.PI)*120; plank(x,y,s.w,f.tok,(1-p)*2); });
+    falling.forEach(f=>plank(f.x,f.y,f.w,f.tok,f.rot,.95));
+    drawHero(c,heroX,GY-2,narrow?.9:1,T,1);
+    if(phase==="build"&&!pause){ const bw=narrow?150:200; c.fillStyle="#0006"; rr(c,16,16,bw,12,6); c.fill(); c.fillStyle=tLeft<8?"#FF5C7A":"#6EC1FF"; rr(c,16,16,bw*Math.max(0,tLeft/TL),12,6); c.fill(); c.fillStyle="#fff"; c.font=`700 12px "Golos Text", sans-serif`; c.textAlign="left"; c.fillText("Су көтерілуде",16,44); }
+    fx.draw(c);
+    if(banner&&banner.t>0){ c.globalAlpha=Math.min(1,banner.t); c.fillStyle="rgba(10,8,25,.7)"; c.fillRect(0,H*.32-50,W,104); c.fillStyle="#FFC94A"; c.font=`800 30px Unbounded, sans-serif`; c.textAlign="center"; c.textBaseline="middle"; c.fillText(banner.a,W/2,H*.32-14); c.fillStyle="#fff"; c.font=`600 ${narrow?14:17}px "Golos Text", sans-serif`; c.fillText(banner.b,W/2,H*.32+22); c.globalAlpha=1; }
+  }
+  loop((dt,T)=>{
+    if(!pause&&phase==="build"&&!(banner&&banner.t>0)){ tLeft-=dt; if(tLeft<=0){ tLeft=0; flood(); } }
+    flying.forEach(f=>f.t+=dt*2.2); flying=flying.filter(f=>{ if(f.t>=1){ const s=slots[f.i]; fx.burst(s.x+s.w/2,PY-10,"#FFC94A",12,160); return false; } return true; });
+    if(phase==="build"){ const k=placed.length-flying.length; heroTarget=k>0?slots[k-1].x+slots[k-1].w/2:x0-40; }
+    heroX+=(heroTarget-heroX)*Math.min(1,dt*(walkOut?2:5));
+    falling.forEach(f=>{ f.vy+=600*dt; f.y+=f.vy*dt; f.rot+=f.vr*dt; if(!f.splash&&f.y>GY+60){ f.splash=1; fx.burst(f.x,f.y,"#9AD8FF",18,200); } }); falling=falling.filter(f=>f.y<H+60);
+    if(banner) banner.t-=dt; fx.update(dt); draw(T);
+  });
+  overlay(`<h2>Ереже көпірі</h2><p>Жардың арғы бетіне өту үшін CSS ережесінің бөліктерінен тақтай-көпір сал!</p>
+    <ul class="how"><li>Төмендегі бөліктерді дұрыс ретпен бас: <code>селектор { қасиет: мән; }</code></li><li>Қате бөлікті бассаң, тақтай суға құлайды және бір жүрек кетеді.</li><li>Су көтеріліп келеді, сондықтан асық!</li></ul>`,
+    [{label:"Ойнау ▶",fn:()=>startBridge()}]);
+}
+
+/* ================= GAME 2: SELECTOR SHOOTER ================= */
+function mkEl(spec){ const parts=spec.split(">"); let parent=null, el=null; parts.forEach(p=>{ const m=p.trim().match(/^(\w+)(?:\.([\w-]+))?(?:#([\w-]+))?$/); const e=document.createElement(m[1]); if(m[2]) e.className=m[2]; if(m[3]) e.id=m[3]; if(parent) parent.appendChild(e); parent=e; el=e; }); return el; }
+const BALLOONS=[
+  {lab:'<p>',spec:"p"},{lab:'<p class="blue">',spec:"p.blue"},{lab:'<h1>',spec:"h1"},{lab:'<h1 class="blue">',spec:"h1.blue"},
+  {lab:'<p id="pink">',spec:"p#pink"},{lab:'<h2>',spec:"h2"},{lab:'<h2 class="red">',spec:"h2.red"},{lab:'<div>›<b>',spec:"div>b"},{lab:'<p>›<b>',spec:"p>b"},
+  {lab:'<ul>›<li>',spec:"ul>li"},{lab:'<ol>›<li>',spec:"ol>li"},{lab:'<b>',spec:"b"},{lab:'<span class="blue">',spec:"span.blue"},{lab:'<div id="pink">',spec:"div#pink"}
+].map(b=>({...b,el:mkEl(b.spec)}));
+const SHOOT_ROUNDS=[
+  {sel:"p",type:"Элемент селекторы",info:"барлық <p> тегі"},
+  {sel:".blue",type:"Сынып селекторы",info:"class=\"blue\" бар кез келген тег"},
+  {sel:"#pink",type:"Идентификатор селекторы",info:"id=\"pink\" бар тег"},
+  {sel:"p b",type:"Контекстік селектор",info:"тек p ішіндегі b"},
+  {sel:"p.blue",type:"Тег + сынып",info:"тек class=\"blue\" бар p"},
+  {sel:"ul li",type:"Контекстік селектор",info:"тек ul ішіндегі li"}
+];
+function gameShooter(){
+  const G=newGame(); gameScreen("Селектор тиры");
+  const {cv,c,W,H,narrow,toLocal}=setupCanvas();
+  const fx=new FX(); let hearts=4, pts=0, ri=0, hits=0, NEED=5, combo=0, bal=[], spawnT=0, pause=true, mouse=[W/2,H/2], banner=null, clouds=[...Array(5)].map(()=>({x:rand(0,W),y:rand(20,H*.5),s:rand(.6,1.3)}));
+  setHearts(hearts,4); setPts(0); $("#ctrl").innerHTML="";
+  const R=()=>SHOOT_ROUNDS[ri];
+  const COLS=["#FF6B8B","#6EC1FF","#FFC94A","#9B8CFF","#7BE07B","#FF9F5A"];
+  function taskUI(){ $("#task").innerHTML=`<div><div class="lbl">Раунд ${ri+1}/${SHOOT_ROUNDS.length} · ${esc(R().type)}</div><div class="big">${esc(R().sel)} { }</div></div><div class="txt">Тек осы селектор таңдайтын шарларды атып жар: <b>${esc(R().info)}</b>.<br>Жарылды: <b style="color:var(--teal)">${hits}/${NEED}</b></div>`; }
+  function spawn(){
+    const good=BALLOONS.filter(b=>b.el.matches(R().sel)), bad=BALLOONS.filter(b=>!b.el.matches(R().sel));
+    const b=Math.random()<.45?pick(good):pick(bad);
+    c.font=`800 ${narrow?15:17}px "JetBrains Mono", monospace`; const w=c.measureText(b.lab).width+34;
+    bal.push({...b,x:rand(w/2+10,W-w/2-10),y:H+60,w,h:62,vy:rand(55,85)*(1+ri*.12),ph:rand(0,6),col:pick(COLS),ok:b.el.matches(R().sel)});
+  }
+  function startRound(){ hits=0; bal=[]; taskUI(); banner={a:R().sel,b:R().type+": "+R().info,t:2}; pause=false; spawnT=0; }
+  function shoot(x,y){
+    if(pause) return; sfx("shoot");
+    for(let i=bal.length-1;i>=0;i--){ const b=bal[i]; if(Math.abs(x-(b.dx??b.x))<b.w/2 && Math.abs(y-b.y)<b.h/2+4){
+      bal.splice(i,1);
+      if(b.ok){ combo++; const g=10*Math.min(combo,5); pts+=g; hits++; setPts(pts); fx.burst(b.x,b.y,b.col,30,300); fx.text(b.x,b.y,"+"+g+(combo>1?` x${Math.min(combo,5)}`:"")); sfx("pop"); taskUI();
+        if(hits>=NEED){ pause=true; bal.forEach(o=>fx.burst(o.x,o.y,o.col,10)); bal=[]; later(()=>{ ri++; if(ri>=SHOOT_ROUNDS.length) finishGame("shooter",Math.min(3,Math.max(1,hearts-1)),pts,()=>gameShooter(),"Барлық селектор түрін ажыраттың!"); else startRound(); },900); }
+      } else { combo=0; hearts--; setHearts(hearts,4); fx.burst(b.x,b.y,"#555",16); fx.text(b.x,b.y,"✗","#FF5C7A",30); sfx("bad"); toast(`${b.lab} — «${R().sel}» оны таңдамайды!`);
+        if(hearts<=0){ pause=true; later(()=>loseGame(()=>gameShooter()),500); } }
+      return; } }
+  }
+  on(cv,"pointerdown",e=>{ const [x,y]=toLocal(e); mouse=[x,y]; shoot(x,y); });
+  on(cv,"pointermove",e=>{ mouse=toLocal(e); });
+  cv.style.cursor="none";
+  function draw(T){
+    const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1B3A6B"); g.addColorStop(.6,"#3C6FB0"); g.addColorStop(1,"#86C5F2"); c.fillStyle=g; c.fillRect(0,0,W,H);
+    clouds.forEach(k=>{ c.fillStyle="rgba(255,255,255,.18)"; c.beginPath(); c.ellipse(k.x,k.y,60*k.s,20*k.s,0,0,7); c.ellipse(k.x+40*k.s,k.y-10*k.s,40*k.s,18*k.s,0,0,7); c.fill(); });
+    c.fillStyle="#2E5C3E"; c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=20) c.lineTo(x,H-40-Math.sin(x/90)*18); c.lineTo(W,H); c.fill();
+    c.fillStyle="#24493A"; c.beginPath(); c.moveTo(0,H); for(let x=0;x<=W;x+=20) c.lineTo(x,H-18-Math.sin(x/60+2)*10); c.lineTo(W,H); c.fill();
+    bal.forEach(b=>{
+      const x=b.x+Math.sin(T*1.5+b.ph)*10, y=b.y;
+      c.strokeStyle="rgba(255,255,255,.6)"; c.lineWidth=1.5; c.beginPath(); c.moveTo(x,y+b.h/2+6); c.quadraticCurveTo(x+Math.sin(T*3+b.ph)*10,y+b.h/2+30,x,y+b.h/2+56); c.stroke();
+      const gr=c.createRadialGradient(x-b.w*.2,y-b.h*.25,4,x,y,b.w*.7); gr.addColorStop(0,"#fff"); gr.addColorStop(.18,b.col); gr.addColorStop(1,b.col);
+      c.fillStyle=gr; rr(c,x-b.w/2,y-b.h/2,b.w,b.h,b.h/2); c.fill();
+      c.fillStyle=b.col; c.beginPath(); c.moveTo(x-7,y+b.h/2+8); c.lineTo(x+7,y+b.h/2+8); c.lineTo(x,y+b.h/2-2); c.fill();
+      c.fillStyle="#0A1A28"; c.font=`800 ${narrow?15:17}px "JetBrains Mono", monospace`; c.textAlign="center"; c.textBaseline="middle"; c.fillText(b.lab,x,y+1);
+      b.dx=x;
+    });
+    fx.draw(c);
+    const [mx,my]=mouse; c.strokeStyle="#FFC94A"; c.lineWidth=2.5; c.beginPath(); c.arc(mx,my,16,0,7); c.moveTo(mx-24,my); c.lineTo(mx-8,my); c.moveTo(mx+8,my); c.lineTo(mx+24,my); c.moveTo(mx,my-24); c.lineTo(mx,my-8); c.moveTo(mx,my+8); c.lineTo(mx,my+24); c.stroke();
+    if(banner&&banner.t>0){ c.globalAlpha=Math.min(1,banner.t); c.fillStyle="rgba(5,10,20,.7)"; c.fillRect(0,H/2-62,W,124); c.fillStyle="#FFC94A"; c.font=`800 38px "JetBrains Mono", monospace`; c.textAlign="center"; c.fillText(banner.a,W/2,H/2-12); c.fillStyle="#EAF2F7"; c.font=`600 ${narrow?14:17}px "Golos Text", sans-serif`; c.fillText(banner.b,W/2,H/2+28); c.globalAlpha=1; }
+  }
+  loop((dt,T)=>{
+    if(!pause){ spawnT-=dt; if(spawnT<=0){ spawn(); spawnT=rand(.7,1.1)-ri*.05; } }
+    bal.forEach(b=>{ b.y-=b.vy*dt; b.x=Math.max(b.w/2,Math.min(W-b.w/2,b.x)); });
+    bal=bal.filter(b=>{ if(b.y<-80){ if(b.ok&&!pause){ combo=0; } return false; } return true; });
+    clouds.forEach(k=>{ k.x+=10*k.s*dt; if(k.x>W+100) k.x=-100; });
+    if(banner) banner.t-=dt; fx.update(dt); draw(T);
+  });
+  overlay(`<h2>Селектор тиры</h2><p>Әр раундта бір селектор беріледі. Тек сол селектор таңдайтын шарларды атып жар.</p>
+    <ul class="how"><li><code>p</code> – тег атауы, <code>.blue</code> – сынып, <code>#pink</code> – id</li><li><code>p b</code> – p ішіндегі b. Шардағы <code>&lt;p&gt;›&lt;b&gt;</code> белгісі «p ішіндегі b» дегенді білдіреді.</li><li>Қате шарды атсаң, бір жүрек кетеді. Әр раундта 5 дұрыс шар жар.</li></ul>`,
+    [{label:"Ойнау ▶",fn:()=>startRound()}]);
+}
+
+/* ================= GAME 3: CODE CATCH (steer falling cards) ================= */
+const CATCH_PHASES=[
+  {title:"Стиль қосу тәсілдері",lanes:["Ішкі","Жаһандық","Сыртқы"],why:["style атрибуты","<head> ішіндегі <style>","<link> арқылы .css файл"],
+   cards:[['<p style="color:red">',0],['<h1 style="font-size:20px">',0],['<b style="color:navy">',0],['<style>\n p {color:navy}\n</style>',1],['<head><style>\n h1 {color:red}\n</style></head>',1],['<style>\n ul li {color:green}\n</style>',1],['<link rel="stylesheet"\n href="style.css">',2],['<link href="site.css"\n rel="stylesheet">',2]]},
+  {title:"Селектор түрлері",lanes:["Элемент","Сынып","Id","Контекстік"],why:["жай тег атауы","нүктемен басталады","# белгісімен","бос орынмен бөлінген"],
+   cards:[["p",0],["h1",0],["ul",0],[".blue",1],["p.note",1],[".menu",1],["#pink",2],["p#main",2],["#logo",2],["p b",3],["ul li",3],["div span",3]]}
+];
+function gameCatch(){
+  const G=newGame(); gameScreen("Код құлауы");
+  const {cv,c,W,H,narrow,toLocal}=setupCanvas();
+  const fx=new FX(); let hearts=4, pts=0, phi=0, queue=[], card=null, pause=true, speed=70, glow=[], combo=0, banner=null;
+  setHearts(hearts,4); setPts(0);
+  const P=()=>CATCH_PHASES[Math.min(phi,CATCH_PHASES.length-1)], N=()=>P().lanes.length, laneW=()=>W/N(), BASKET=H-92;
+  function taskUI(){ $("#task").innerHTML=`<div><div class="lbl">Кезең ${phi+1}/${CATCH_PHASES.length}</div><div class="txt"><b>${esc(P().title)}</b>: құлап келе жатқан кодты дұрыс себетке бағытта.</div></div><div class="txt" style="flex:0 0 auto">Қалды: <b style="color:var(--gold)">${queue.length+(card?1:0)}</b></div>`; }
+  function nextCard(){ if(!queue.length){ card=null; pause=true; phi++; if(phi>=CATCH_PHASES.length){ later(()=>finishGame("catch",Math.min(3,Math.max(1,hearts-1)),pts,()=>gameCatch(),"Кодтарды тәсілі мен түріне қарай ажыраттың!"),600); } else later(startPhase,900); return; }
+    const [txt,ans]=queue.shift(); card={txt,ans,lane:Math.floor(N()/2),x:0,y:-40,lines:txt.split("\n")}; card.x=laneX(card.lane); taskUI(); }
+  const laneX=l=>laneW()*l+laneW()/2;
+  function startPhase(){ queue=shuffle(P().cards); glow=P().lanes.map(()=>0); banner={a:P().title,t:1.8}; pause=false; nextCard();
+    $("#ctrl").innerHTML=`<button class="lanebtn" id="lL" type="button" aria-label="Солға">◀</button><button class="lanebtn" id="lD" type="button" aria-label="Тез түсіру">▼</button><button class="lanebtn" id="lR" type="button" aria-label="Оңға">▶</button>`;
+    on($("#lL"),"pointerdown",e=>{e.preventDefault();move(-1);}); on($("#lR"),"pointerdown",e=>{e.preventDefault();move(1);}); on($("#lD"),"pointerdown",e=>{e.preventDefault();drop=true;}); on($("#lD"),"pointerup",()=>drop=false);
+  }
+  let drop=false;
+  function move(d){ if(!card||pause) return; card.lane=Math.max(0,Math.min(N()-1,card.lane+d)); sfx("tick"); }
+  on(window,"keydown",e=>{ if(e.key==="ArrowLeft"||e.key==="a"){e.preventDefault();move(-1);} if(e.key==="ArrowRight"||e.key==="d"){e.preventDefault();move(1);} if(e.key==="ArrowDown"||e.key==="s"){e.preventDefault();drop=true;} });
+  on(window,"keyup",e=>{ if(e.key==="ArrowDown"||e.key==="s") drop=false; });
+  on(cv,"pointerdown",e=>{ const [x]=toLocal(e); if(card){ const l=Math.floor(x/laneW()); card.lane=Math.max(0,Math.min(N()-1,l)); sfx("tick"); } });
+  function land(){
+    const ok=card.lane===card.ans, x=laneX(card.lane);
+    if(ok){ combo++; const g=10+Math.min(combo,5)*2; pts+=g; setPts(pts); glow[card.lane]=1; fx.burst(x,BASKET,"#2DD4BF",26); fx.text(x,BASKET-40,"+"+g); sfx("land"); speed=Math.min(170,speed+6); }
+    else { combo=0; hearts--; setHearts(hearts,4); fx.burst(x,BASKET,"#FF5C7A",26); sfx("bad"); toast(`Бұл – «${P().lanes[card.ans]}»: ${P().why[card.ans]}`); queue.push([card.txt,card.ans]);
+      if(hearts<=0){ card=null; pause=true; later(()=>loseGame(()=>gameCatch()),500); return; } }
+    nextCard();
+  }
+  function draw(T){
+    const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#0D1730"); g.addColorStop(1,"#1A1440"); c.fillStyle=g; c.fillRect(0,0,W,H);
+    for(let i=0;i<40;i++){ c.fillStyle=`rgba(255,255,255,${.15+.15*Math.sin(T*2+i)})`; c.fillRect((i*137)%W,(i*71+T*12*(1+i%3))%H,2,2); }
+    for(let l=0;l<N();l++){ const x=laneW()*l; c.fillStyle=card&&card.lane===l?"rgba(255,201,74,.08)":"rgba(255,255,255,.02)"; c.fillRect(x+3,0,laneW()-6,BASKET); }
+    c.strokeStyle="rgba(255,255,255,.08)"; c.setLineDash([6,8]); for(let l=1;l<N();l++){ c.beginPath(); c.moveTo(laneW()*l,0); c.lineTo(laneW()*l,BASKET); c.stroke(); } c.setLineDash([]);
+    P().lanes.forEach((name,l)=>{ const x=laneW()*l+6, w=laneW()-12; glow[l]=Math.max(0,glow[l]-.02);
+      c.fillStyle=`rgba(45,212,191,${.15+glow[l]*.6})`; rr(c,x,BASKET,w,82,14); c.fill(); c.strokeStyle=glow[l]>0?"#2DD4BF":"#3B5A78"; c.lineWidth=3; c.stroke();
+      c.fillStyle="#EAF2F7"; c.font=`800 ${narrow?(N()>3?12:14):17}px Unbounded, sans-serif`; c.textAlign="center"; c.textBaseline="middle"; c.fillText(name,x+w/2,BASKET+41);
+      });
+    if(card){
+      card.x+=(laneX(card.lane)-card.x)*.25;
+      c.font=`700 ${narrow?13:15}px "JetBrains Mono", monospace`; const lw=Math.max(...card.lines.map(s=>c.measureText(s).width));
+      const w=Math.min(laneW()*(N()>3?1.6:1)-4,Math.max(120,lw+28)), h=34+card.lines.length*20, x=Math.max(w/2+4,Math.min(W-w/2-4,card.x)), y=card.y;
+      c.shadowColor="rgba(255,201,74,.6)"; c.shadowBlur=20; c.fillStyle="#0A1220"; rr(c,x-w/2,y-h/2,w,h,10); c.fill(); c.shadowBlur=0; c.strokeStyle="#FFC94A"; c.lineWidth=2; c.stroke();
+      ["#FF5C7A","#FFC94A","#2DD4BF"].forEach((col,i)=>{ c.fillStyle=col; c.beginPath(); c.arc(x-w/2+12+i*11,y-h/2+11,3.5,0,7); c.fill(); });
+      c.fillStyle="#FFE8A8"; c.textAlign="left"; c.textBaseline="middle"; const sc=Math.min(1,(w-20)/lw);
+      card.lines.forEach((s,i)=>{ c.save(); c.translate(x-w/2+12,y-h/2+30+i*20); c.scale(sc,1); c.fillText(s,0,0); c.restore(); });
+      c.strokeStyle="rgba(255,201,74,.25)"; c.setLineDash([4,6]); c.beginPath(); c.moveTo(x,y+h/2); c.lineTo(x,BASKET); c.stroke(); c.setLineDash([]);
+    }
+    fx.draw(c);
+    if(banner&&banner.t>0){ c.globalAlpha=Math.min(1,banner.t); c.fillStyle="rgba(5,10,20,.7)"; c.fillRect(0,H/2-46,W,92); c.fillStyle="#FFC94A"; c.font=`800 ${narrow?20:28}px Unbounded, sans-serif`; c.textAlign="center"; c.textBaseline="middle"; c.fillText(banner.a,W/2,H/2); c.globalAlpha=1; }
+  }
+  loop((dt,T)=>{ if(!pause&&card){ card.y+=(drop?speed*4.5:speed)*dt; if(card.y>=BASKET-20) land(); } if(banner) banner.t-=dt; fx.update(dt); draw(T); });
+  overlay(`<h2>Код құлауы</h2><p>Жоғарыдан код карточкалары құлайды. Әр карточканы дұрыс себетке бағытта!</p>
+    <ul class="how"><li>1-кезең: ішкі, жаһандық және сыртқы стиль.</li><li>2-кезең: элемент, сынып, id және контекстік селектор.</li><li>Басқару: ◀ ▶ пернелері, жолақты басу немесе батырмалар. ▼ – тез түсіру.</li></ul>`,
+    [{label:"Ойнау ▶",fn:()=>startPhase()}]);
+}
+
+/* ================= GAME 4: BUILDER ADVENTURE (real CSS in a live world) ================= */
+const STATIONS=[
+  {title:"Түнгі орман",say:"Түн... Ештеңе көрінбейді!",task:"Күнді жарқырат: <code>.sun</code> элементіне сары (<code>yellow</code>) фон бер.",checks:[[".sun","background-color","yellow"]],keep:[],hint:".sun { background-color: yellow; }",after:w=>w.classList.add("day")},
+  {title:"Өзен",say:"Өзеннен қалай өтемін?",task:"Көпір сал: <code>.bridge</code> элементіне тұтас (<code>solid</code>) шегара стилін бер.",checks:[[".bridge","border-top-style","solid"]],keep:[],hint:".bridge { border-style: solid; }"},
+  {title:"Екі есік",say:"Менің есігім – id=\"door\". Көршінікін бояма!",task:"Тек <code>id=\"door\"</code> есігін id бойынша жасыл (<code>green</code>) түске боя. Көршінің есігі өзгермесін.",checks:[["#door","background-color","green"]],keep:["#old"],hint:"#door { background-color: green; }",after:w=>w.querySelector("#door").classList.add("open")},
+  {title:"Күзетші",say:"Күзетші тек БАС ӘРІППЕН жазылған құпия сөзді оқиды!",task:"Тақтадағы <code>.sign</code> мәтінін бас әріпке айналдыр: <code>text-transform</code>.",checks:[[".sign","text-transform","uppercase"]],keep:[],hint:".sign { text-transform: uppercase; }",after:w=>w.querySelector(".guard").classList.add("away")},
+  {title:"Асыл тас үңгірі",say:"Тек асыл тастар (.gem) жарқырасын, қарапайым тастар (.rock) емес!",task:"Тек <code>.gem</code> сыныбына <code>3px solid gold</code> шегара бер.",checks:[[".gem","border-top-style","solid"],[".gem","border-top-color","gold"],[".gem","border-top-width","3px"]],keep:[".rock"],hint:".gem { border: 3px solid gold; }"},
+  {title:"Қазына сандығы",say:"Сандықтың ішіндегі жазуды тап!",task:"Тек сандық ішіндегі абзацты (<code>.chest</code> ішіндегі <code>p</code>) қызыл (<code>red</code>) қыл. Сыртындағы абзац өзгермесін.",checks:[[".chest p","color","red"]],keep:[".note"],hint:".chest p { color: red; }",after:w=>w.querySelector(".chest").classList.add("open")}
+];
+const WORLD_CSS=`
+:host{all:initial;display:block;position:absolute;inset:0;overflow:hidden;font-family:"Golos Text",sans-serif}
+.vp{position:absolute;left:0;top:0;width:800px;height:420px;transform-origin:0 0;overflow:hidden}
+.world{position:absolute;left:0;top:0;width:4800px;height:420px;transition:transform 1.8s ease-in-out,background 1.5s;background:linear-gradient(#050B1C,#13244A 70%)}
+.world.day{background:linear-gradient(#5CB7F5,#BFE6FF 70%)}
+.star{position:absolute;width:3px;height:3px;background:#fff;border-radius:50%;opacity:.8;transition:opacity 1.5s}
+.world.day .star{opacity:0}
+.ground{position:absolute;bottom:0;height:80px;background:linear-gradient(#4CAF50 0 12px,#6B4423 12px)}
+.hill{position:absolute;bottom:70px;border-radius:50% 50% 0 0;background:#1E4D3A}
+.world.day .hill{background:#5BA86B}
+.tree{position:absolute;bottom:78px;width:0;height:0;border-left:28px solid transparent;border-right:28px solid transparent;border-bottom:90px solid #14532D}
+.tree::after{content:"";position:absolute;left:-5px;top:90px;width:10px;height:18px;background:#6B4423}
+.river{position:absolute;bottom:0;height:80px;background:repeating-linear-gradient(90deg,#1E6FD9 0 30px,#2B86F0 30px 60px);animation:flow 2s linear infinite}
+@keyframes flow{to{background-position:60px 0}}
+:where(.sun){position:absolute;width:90px;height:90px;border-radius:50%;background-color:transparent;outline:3px dashed rgba(255,255,255,.35);outline-offset:-3px}
+:where(.bridge){position:absolute;height:0;border-style:none;border-width:14px 4px 4px;border-color:#9A6331 #6B4423 #6B4423}
+.house{position:absolute;bottom:80px;width:170px;height:140px;background:#E9D3B0}
+.house::before{content:"";position:absolute;left:-20px;top:-70px;border-left:105px solid transparent;border-right:105px solid transparent;border-bottom:70px solid #B23A3A}
+.house .tag{position:absolute;top:10px;left:0;right:0;text-align:center;font:700 13px "Golos Text",sans-serif;color:#3b2a14}
+:where(.door){position:absolute;bottom:0;left:55px;width:60px;height:96px;background-color:#7A2E2E;border-radius:8px 8px 0 0;transition:transform .6s;transform-origin:left}
+.door.open{transform:perspective(300px) rotateY(-70deg)}
+:where(.sign){position:absolute;bottom:80px;width:200px;padding:14px 10px;background:#C99A5B;border:6px solid #7a5530;color:#3b2a14;font:800 22px "JetBrains Mono",monospace;text-align:center}
+.post{position:absolute;bottom:80px;width:12px;height:40px;background:#6B4423}
+.guard{position:absolute;bottom:80px;width:60px;height:110px;transition:transform 1s}
+.guard.away{transform:translateX(160px)}
+.guard .b{position:absolute;bottom:0;left:5px;width:50px;height:76px;background:#3A4E8C;border-radius:12px 12px 4px 4px}
+.guard .h{position:absolute;top:0;left:12px;width:36px;height:36px;background:#F2C9A0;border-radius:50%}
+.guard .hat{position:absolute;top:-8px;left:8px;width:44px;height:16px;background:#1E2A55;border-radius:6px 6px 0 0}
+.cave{position:absolute;bottom:80px;width:760px;height:300px;background:radial-gradient(ellipse at 50% 100%,#3C2F4F,#1A1426 70%);border-radius:380px 380px 0 0}
+:where(.gem){position:absolute;width:38px;height:38px;transform:rotate(45deg);background:linear-gradient(135deg,#7FF0FF,#3C7BFF)}
+:where(.gem.g2){background:linear-gradient(135deg,#FF9DE2,#C03FFF)}
+:where(.rock){position:absolute;width:46px;height:34px;border-radius:40% 50% 30% 45%;background:#6E6A75}
+:where(.chest){position:absolute;bottom:80px;width:200px;height:120px;background:linear-gradient(#A8682C,#7A4A1C);border:5px solid #E2B13C;border-radius:12px}
+.chest .lid{position:absolute;left:-5px;top:-40px;width:200px;height:40px;background:#B8742F;border:5px solid #E2B13C;border-radius:30px 30px 4px 4px;transition:transform .8s;transform-origin:left bottom}
+.chest.open .lid{transform:rotate(-35deg)}
+:where(.chest p){margin:0;padding:34px 8px 0;text-align:center;font:800 18px "Golos Text",sans-serif;color:#FFE7A8}
+:where(.note){position:absolute;bottom:230px;margin:0;width:220px;font:700 16px "Golos Text",sans-serif;color:#EAF2F7;background:rgba(0,0,0,.35);padding:8px 12px;border-radius:8px}
+.lbl{position:absolute;font:700 12px "JetBrains Mono",monospace;color:#FFC94A;background:rgba(0,0,0,.45);padding:2px 7px;border-radius:5px}
+.hero{position:absolute;bottom:80px;width:56px;height:84px;transition:left 1.8s ease-in-out;z-index:5}
+.hero .bd{position:absolute;bottom:14px;left:4px;width:48px;height:52px;border-radius:16px;background:linear-gradient(#5EEAD4,#14B8A6)}
+.hero .vs{position:absolute;bottom:38px;left:10px;width:36px;height:22px;border-radius:9px;background:#0A1A28}
+.hero .vs::before,.hero .vs::after{content:"";position:absolute;top:6px;width:7px;height:9px;border-radius:50%;background:#8FF7FF}
+.hero .vs::before{left:8px}.hero .vs::after{right:8px}
+.hero .lg{position:absolute;bottom:0;width:10px;height:16px;background:#1b8f83;border-radius:3px}
+.hero .l1{left:12px}.hero .l2{right:12px}
+.hero.walk .l1{animation:step .3s infinite alternate}.hero.walk .l2{animation:step .3s infinite alternate-reverse}
+@keyframes step{to{transform:translateY(-6px)}}
+.hero .br{position:absolute;top:-6px;left:0;right:0;text-align:center;font:800 18px "JetBrains Mono",monospace;color:#FFC94A}
+.hero.no{animation:no .4s}
+@keyframes no{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+.bubble{position:absolute;bottom:100px;left:30px;width:220px;background:#fff;color:#14202A;font:600 14px/1.35 "Golos Text",sans-serif;padding:9px 12px;border-radius:14px;box-shadow:0 6px 16px rgba(0,0,0,.3)}
+.bubble::after{content:"";position:absolute;left:14px;bottom:-8px;border:8px solid transparent;border-top-color:#fff;border-bottom:0}
+.spark{position:absolute;width:8px;height:8px;border-radius:50%;background:#FFC94A;pointer-events:none;animation:spark 1s ease-out forwards}
+@keyframes spark{to{transform:translate(var(--dx),var(--dy));opacity:0}}
+`;
+function worldHTML(){
+  let stars=""; for(let i=0;i<60;i++) stars+=`<i class="star" style="left:${Math.random()*4800}px;top:${Math.random()*230}px"></i>`;
+  return `<div class="vp"><div class="world" id="world">${stars}
+  <div class="hill" style="left:-80px;width:420px;height:140px"></div><div class="hill" style="left:300px;width:520px;height:200px"></div>
+  <div class="ground" style="left:0;width:1130px"></div><div class="tree" style="left:60px"></div><div class="tree" style="left:240px"></div>
+  <div class="sun"></div><span class="lbl" style="left:530px;top:40px">.sun</span>
+  <div class="river" style="left:1130px;width:310px"></div><div class="bridge" style="left:1122px;bottom:66px;width:318px"></div><span class="lbl" style="left:1240px;top:300px">.bridge</span>
+  <div class="ground" style="left:1440px;width:3360px"></div>
+  <div class="house" style="left:1780px"><div class="tag">Көршінің үйі</div><div class="door" id="old"></div></div><span class="lbl" style="left:1830px;top:120px">#old</span>
+  <div class="house" style="left:2110px"><div class="tag">Менің үйім</div><div class="door" id="door"></div></div><span class="lbl" style="left:2160px;top:120px">#door</span>
+  <div class="sign" style="left:2650px;bottom:150px">сезам, ашыл</div><div class="post" style="left:2690px"></div><div class="post" style="left:2800px"></div><span class="lbl" style="left:2720px;top:120px">.sign</span>
+  <div class="guard" style="left:2920px"><div class="b"></div><div class="h"></div><div class="hat"></div></div>
+  <div class="cave" style="left:3220px"></div>
+  <div class="gem" style="left:3420px;bottom:180px"></div><div class="rock" style="left:3500px;bottom:110px"></div><div class="gem g2" style="left:3580px;bottom:230px"></div>
+  <div class="gem" style="left:3680px;bottom:130px"></div><div class="rock" style="left:3760px;bottom:200px"></div><div class="gem g2" style="left:3840px;bottom:150px"></div>
+  <span class="lbl" style="left:3420px;top:110px">.gem</span><span class="lbl" style="left:3760px;top:250px">.rock</span>
+  <p class="note" style="left:4130px">Бұл жай жазу (.note)</p>
+  <div class="chest" style="left:4400px"><div class="lid"></div><p>Алтын осында!</p></div><span class="lbl" style="left:4440px;top:200px">.chest p</span>
+  <div class="hero" id="hero" style="left:110px"><div class="br">{ }</div><div class="bd"></div><div class="vs"></div><div class="lg l1"></div><div class="lg l2"></div><div class="bubble" id="bub"></div></div>
+  </div></div>`;
+}
+// fixed positions per station
+const SUN_POS="left:560px;top:50px";
+function gameBuilder(){
+  const G=newGame(); gameScreen("Шебер саяхаты");
+  const stage=$("#stage"); stage.innerHTML=`<div class="scene"><div class="host" id="host"></div></div><div class="ov" id="ov" hidden></div>`;
+  $("#hearts").innerHTML=""; $("#ctrl").innerHTML="";
+  const sh=$("#host").attachShadow({mode:"open"});
+  sh.innerHTML=`<style>${WORLD_CSS}</style><style id="solved"></style><style id="user"></style>${worldHTML()}`;
+  $(".sun",sh).setAttribute("style",SUN_POS);
+  const vp=$(".vp",sh), world=$("#world",sh), hero=$("#hero",sh), bub=$("#bub",sh), uStyle=$("#user",sh), sStyle=$("#solved",sh);
+  const fit=()=>{ vp.style.transform=`scale(${$("#host").clientWidth/800})`; }; fit();
+  const ro=new ResizeObserver(fit); ro.observe($("#host")); G.offs.push(()=>ro.disconnect());
+  let si=0, fails=0, pts=0, totalFails=0, solved=[], baseline=null; setPts(0);
+  $("#task").outerHTML=`<div class="task" id="task"></div>`;
+  $("#ctrl").outerHTML=`<div id="ctrl"><div class="editor"><textarea id="code" spellcheck="false" placeholder="селектор { қасиет: мән; }" aria-label="CSS код"></textarea><div class="btns"><button class="btn" id="run" type="button">▶ Іске қос</button><button class="btn ghost" id="hint" type="button">Кеңес</button></div></div><div class="msg" id="msg"></div></div>`;
+  const ta=$("#code"), msg=$("#msg");
+  const say=t=>{ bub.textContent=t; bub.style.display=t?"block":"none"; };
+  const S=()=>STATIONS[si];
+  function heroX(i){ return [110,1010,1700,2440,3260,4180][i]; }
+  function expected(prop,val){ const r=document.createElement("span"); r.style.borderStyle="solid"; r.style.setProperty(prop,val); world.appendChild(r); const v=getComputedStyle(r).getPropertyValue(prop); r.remove(); return v; }
+  function snapshot(){ const props=S().checks.map(c=>c[1]); const m=new Map(); S().keep.forEach(sel=>$$(sel,world).forEach(el=>{ const cs=getComputedStyle(el); m.set(el,props.map(p=>cs.getPropertyValue(p))); })); return m; }
+  function stationUI(){
+    $("#task").innerHTML=`<div><div class="lbl">Аялдама ${si+1}/${STATIONS.length} · ${esc(S().title)}</div><div class="txt">${S().task}</div></div>`;
+    ta.value=""; ta.disabled=false; $("#run").disabled=false; msg.textContent="Код жазғанда нәтиже әлемде бірден көрінеді."; msg.className="msg"; fails=0; uStyle.textContent="";
+    baseline=snapshot(); say(S().say);
+  }
+  function goTo(i){ hero.classList.add("walk"); say(""); hero.style.left=heroX(i)+"px"; world.style.transform=`translateX(${-Math.max(0,heroX(i)-110)}px)`; later(()=>{ hero.classList.remove("walk"); if(si<STATIONS.length) stationUI(); },1850); }
+  function sparks(el,n=24){ const r=el.getBoundingClientRect(), w=world.getBoundingClientRect(), k=800/$("#host").clientWidth; const x=(r.left-w.left)*k+r.width*k/2, y=(r.top-w.top)*k+r.height*k/2;
+    for(let i=0;i<n;i++){ const s=document.createElement("i"); s.className="spark"; s.style.left=x+"px"; s.style.top=y+"px"; s.style.setProperty("--dx",rand(-120,120)+"px"); s.style.setProperty("--dy",rand(-120,60)+"px"); s.style.background=pick(["#FFC94A","#2DD4BF","#FF5C7A","#fff"]); world.appendChild(s); later(()=>s.remove(),1000); } }
+  on(ta,"input",()=>{ uStyle.textContent=ta.value; });
+  on(ta,"keydown",e=>{ if(e.key==="Enter"&&(e.ctrlKey||e.metaKey)){ e.preventDefault(); check(); } });
+  function check(){
+    uStyle.textContent=ta.value; const probs=[];
+    if(!ta.value.trim()){ msg.className="msg err"; msg.textContent="Алдымен CSS ереже жаз."; return; }
+    S().checks.forEach(([sel,prop,val])=>{ const els=$$(sel,world); const want=expected(prop,val); if(!els.length||els.some(el=>getComputedStyle(el).getPropertyValue(prop)!==want)) probs.push(`${sel} үшін ${prop} әлі дұрыс емес.`); });
+    if(!probs.length){ const props=S().checks.map(c=>c[1]); baseline.forEach((vals,el)=>{ const cs=getComputedStyle(el); if(props.some((p,i)=>cs.getPropertyValue(p)!==vals[i])) probs.push("Артық элемент те өзгеріп кетті! Селекторды дәлірек жаз."); }); }
+    if(probs.length){ fails++; totalFails++; sfx("bad"); hero.classList.remove("no"); void hero.offsetWidth; hero.classList.add("no"); msg.className="msg err"; msg.textContent=probs[0]; say("Хм... жұмыс істемеді. "+(fails>=2?"«Кеңес» батырмасын басып көр.":"Тағы байқап көр!")); return; }
+    sfx("win"); const g=fails===0?30:fails===1?20:10; pts+=g; setPts(pts); msg.className="msg ok"; msg.textContent=`Керемет! +${g} ұпай`; say("Тамаша! Алға!");
+    solved.push(ta.value); sStyle.textContent=solved.join("\n"); uStyle.textContent=""; ta.disabled=true; $("#run").disabled=true;
+    const el=$(S().checks[0][0],world); if(el) sparks(el); if(S().after) S().after(world);
+    si++;
+    if(si>=STATIONS.length){ later(()=>{ sparks($(".chest",world),60); say("Қазына табылды!"); later(()=>finishGame("builder",totalFails<=1?3:totalFails<=4?2:1,pts,()=>gameBuilder(),"CSS арқылы бүкіл әлемді өзгерттің!"),1300); },900); }
+    else later(()=>goTo(si),1100);
+  }
+  $("#run").onclick=check;
+  $("#hint").onclick=()=>{ if(fails<1){ msg.className="msg"; msg.textContent="Кеңес бір рет байқап көргеннен кейін ашылады. Өзің жазып көр!"; return; } ta.value=S().hint; uStyle.textContent=ta.value; totalFails++; msg.className="msg"; msg.textContent="Мысал жауап қойылды. Оны оқып, «Іске қос» батырмасын бас."; };
+  overlay(`<h2>Шебер саяхаты</h2><p>Кейіпкер жолға шықты, бірақ жолында кедергілер көп. Әлемді CSS кодымен өзгертіп, оған жол аш!</p>
+    <ul class="how"><li>Әлемдегі сары белгілер элементтердің сыныбын немесе id-ін көрсетеді: <code>.sun</code>, <code>#door</code>…</li><li>Ережені толық жаз: <code>.sun { background-color: yellow; }</code></li><li>Сен жазған код әлемге бірден әсер етеді!</li></ul>`,
+    [{label:"Саяхатты бастау ▶",fn:()=>{ stationUI(); ta.focus({preventScroll:true}); }}]);
+}
+
+/* ================= GAME 5: BOSS — BUG MONSTER ================= */
+const BUGS=[
+  {say:"Мен жақшаларды бұздым!",bad:"h1 (color: red;)",ok:["h1{color:red}"]},
+  {say:"Қасиет пен мәннің арасында теңдік тұр!",bad:"p { color = blue; }",ok:["p{color:blue}"]},
+  {say:"Жұптарды үтірмен бөлдім!",bad:"p { color: red, font-size: 14px; }",ok:["p{color:red;font-size:14px}"]},
+  {say:"Бұл id=\"pink\" абзац үшін еді!",bad:".pink { color: maroon; }",ok:["#pink{color:maroon}","p#pink{color:maroon}"]},
+  {say:"Бұл class=\"blue\" элементтер үшін еді!",bad:"#blue { color: blue; }",ok:[".blue{color:blue}","p.blue{color:blue}"]},
+  {say:"Мәтін ортаға тураланбайды!",bad:"p { text-align: middle; }",ok:["p{text-align:center}"]},
+  {say:"Шегара тұтас болмай тұр!",bad:"div { border-style: line; }",ok:["div{border-style:solid}"]},
+  {say:"Тек p ішіндегі b керек еді, ал мен үтір қойдым!",bad:"p, b { color: navy; }",ok:["p b{color:navy}"]},
+  {say:"Курсив сөзін бұздым!",bad:"p { font-style: kursiv; }",ok:["p{font-style:italic}"]},
+  {say:"Мәтінді сызып тастау керек еді!",bad:"p { text-decoration: cross; }",ok:["p{text-decoration:line-through}"]},
+  {say:"Барлық әріп бас әріп болуы керек еді!",bad:"h1 { text-transform: big; }",ok:["h1{text-transform:uppercase}"]},
+  {say:"Фон түсін бұздым!",bad:"body { background: color yellow; }",ok:["body{background-color:yellow}","body{background:yellow}"]}
+];
+const normCSS=s=>s.toLowerCase().replace(/\s+/g," ").replace(/\s*([{}:;,])\s*/g,"$1").replace(/;}/g,"}").replace(/;$/,"").trim();
+function gameBoss(){
+  const G=newGame(); gameScreen("Қате монстрі");
+  const {cv,c,W,H,narrow}=setupCanvas(420);
+  const fx=new FX(); const MAXHP=8; let hp=MAXHP, hearts=3, pts=0, queue=shuffle(BUGS).slice(0,MAXHP), cur=null, timeLeft=0, TL=40, pause=true, shots=[], flinch=0, attack=0, wrongs=0, eyeT=0;
+  setHearts(hearts,3); setPts(0);
+  $("#ctrl").outerHTML=`<div id="ctrl"><div class="bossin"><input id="fix" type="text" spellcheck="false" autocomplete="off" aria-label="Түзетілген CSS"><button class="btn gold" id="fire" type="button">Атқылау ⚡</button></div><div class="msg" id="msg"></div></div>`;
+  const inp=$("#fix"), msg=$("#msg");
+  function taskUI(){ $("#task").innerHTML=`<div style="flex:1;min-width:220px"><div class="lbl">Монстр айтады</div><div class="txt">«${esc(cur.say)}»</div></div><div class="codebar" style="flex:1 1 260px"><span style="color:var(--rose)">${esc(cur.bad)}</span></div>`; }
+  function nextBug(){ if(!queue.length) return; cur=queue.shift(); timeLeft=TL; wrongs=0; taskUI(); inp.value=cur.bad; inp.disabled=false; $("#fire").disabled=false; msg.className="msg"; msg.textContent="Кодты түзетіп, Enter бас немесе «Атқылау» батырмасын бас."; inp.focus({preventScroll:true}); pause=false; }
+  const heroP=()=>[W*.18,H*.78], monP=()=>[W*.72,H*.52];
+  function fire(){
+    if(pause||!cur) return; const v=normCSS(inp.value);
+    if(cur.ok.map(normCSS).includes(v)){
+      pause=true; inp.disabled=true; $("#fire").disabled=true; sfx("shoot"); const [hx,hy]=heroP(); shots.push({x:hx+20,y:hy-60,tx:monP()[0],ty:monP()[1],t:0,good:true});
+      const g=10+Math.round(timeLeft); pts+=g; setPts(pts); msg.className="msg ok"; msg.textContent=`Дәл тидің! +${g}`;
+    } else {
+      wrongs++; sfx("bad"); msg.className="msg err"; msg.textContent= wrongs>=2? `Әлі қате. Кеңес: ${hintFor(cur)}` : "Монстр күліп тұр... Әлі қате бар!"; flinch=-.3;
+    }
+  }
+  function hintFor(b){ const o=b.ok[0]; return "жауап осыған ұқсас болуы керек: "+o.replace(/\{/," { ").replace(/:/g,": ").replace(/;/g,"; ").replace(/\}$/,"; }"); }
+  function monsterHits(){ const [mx,my]=monP(); shots.push({x:mx-60,y:my,tx:heroP()[0],ty:heroP()[1]-40,t:0,good:false}); sfx("hit"); }
+  on(inp,"keydown",e=>{ if(e.key==="Enter"){ e.preventDefault(); fire(); } });
+  $("#fire").onclick=fire;
+  function onShotArrive(s){
+    if(s.good){ hp--; flinch=1; fx.burst(s.tx,s.ty,"#FFC94A",40,340); fx.burst(s.tx,s.ty,"#FF5C7A",20,260); fx.text(s.tx,s.ty-80,"-1 ❤","#FFC94A",26); sfx("boom");
+      if(hp<=0){ later(()=>{ fx.burst(monP()[0],monP()[1],"#9B8CFF",120,420); sfx("win"); later(()=>finishGame("boss",hearts,pts+50,()=>gameBoss(),"Қате монстрі жеңілді! Сен нағыз CSS шеберісің."),1200); },500); }
+      else later(nextBug,900);
+    } else { hearts--; setHearts(hearts,3); attack=1; fx.burst(s.tx,s.ty,"#FF5C7A",30); toast(`Уақыт бітті! Дұрысы: ${cur.ok[0]}`);
+      if(hearts<=0){ pause=true; later(()=>loseGame(()=>gameBoss(),"Монстр бұл жолы мықты болды. Қателерді есіңе сақтап, қайта шайқас!"),800); }
+      else { queue.push(cur); later(nextBug,1400); } }
+  }
+  function drawMonster(T){
+    const [mx,my]=monP(); const s=narrow?.85:1; const shake=flinch>0?Math.sin(T*60)*8*flinch:0;
+    c.save(); c.translate(mx+shake,my+Math.sin(T*2)*6);
+    c.fillStyle="rgba(0,0,0,.35)"; c.beginPath(); c.ellipse(0,130*s,120*s,18*s,0,0,7); c.fill();
+    c.beginPath(); const R=110*s; for(let a=0;a<=Math.PI*2+.01;a+=.12){ const r=R+Math.sin(a*5+T*3)*8*s+Math.sin(a*3-T*2)*6*s; const x=Math.cos(a)*r, y=Math.sin(a)*r*.95; a===0?c.moveTo(x,y):c.lineTo(x,y); } c.closePath();
+    const g=c.createRadialGradient(-30*s,-40*s,10,0,0,R*1.2); g.addColorStop(0,"#C06BFF"); g.addColorStop(1,"#5B1E9E"); c.fillStyle=g; c.fill();
+    c.fillStyle="rgba(255,255,255,.12)"; c.font=`800 ${26*s}px "JetBrains Mono", monospace`; c.textAlign="center"; c.fillText("; } { :",0,70*s);
+    c.fillStyle="#FFC94A"; c.font=`800 ${48*s}px "JetBrains Mono", monospace`; c.fillText("{",-80*s,-95*s); c.fillText("}",80*s,-95*s);
+    [[-38,-30],[38,-30]].forEach(([ex,ey])=>{ c.fillStyle="#fff"; c.beginPath(); c.arc(ex*s,ey*s,22*s,0,7); c.fill(); const [hx,hy]=heroP(); const ang=Math.atan2(hy-my,hx-mx); c.fillStyle="#1a0830"; c.beginPath(); c.arc(ex*s+Math.cos(ang)*9*s,ey*s+Math.sin(ang)*9*s,10*s,0,7); c.fill(); });
+    c.fillStyle="#2a0a40"; c.beginPath(); c.ellipse(0,25*s,50*s,(flinch>0?28:18)*s,0,0,Math.PI); c.fill();
+    c.fillStyle="#fff"; for(let i=-3;i<=3;i++){ c.beginPath(); c.moveTo(i*13*s-5*s,25*s); c.lineTo(i*13*s+5*s,25*s); c.lineTo(i*13*s,36*s); c.fill(); }
+    c.restore();
+    const bw=narrow?200:260; c.fillStyle="#1d0f2e"; rr(c,mx-bw/2,24,bw,18,9); c.fill(); c.fillStyle="#FF5C7A"; rr(c,mx-bw/2,24,bw*hp/MAXHP,18,9); c.fill(); c.strokeStyle="#fff3"; c.lineWidth=2; rr(c,mx-bw/2,24,bw,18,9); c.stroke();
+    c.fillStyle="#EAF2F7"; c.font=`800 13px Unbounded, sans-serif`; c.textAlign="center"; c.fillText(`Қате монстрі  ${hp}/${MAXHP}`,mx,62);
+  }
+  function draw(T){
+    const g=c.createLinearGradient(0,0,0,H); g.addColorStop(0,"#1A0B2E"); g.addColorStop(1,"#3A1340"); c.fillStyle=g; c.fillRect(0,0,W,H);
+    for(let i=0;i<30;i++){ c.fillStyle=`rgba(255,180,255,${.1+.1*Math.sin(T+i)})`; c.beginPath(); c.arc((i*97)%W,(i*53)%(H*.6),1.6,0,7); c.fill(); }
+    c.fillStyle="#24102F"; c.fillRect(0,H*.82,W,H*.18); c.fillStyle="#31163F"; for(let x=0;x<W;x+=60) c.fillRect(x,H*.82,30,6);
+    drawMonster(T);
+    const [hx,hy]=heroP(); drawHero(c,hx+(attack>0?-Math.sin(T*50)*6*attack:0),hy,narrow?1.2:1.4,T,1);
+    if(!pause&&cur){ const bw=narrow?160:220, x=hx-bw/2, y=hy+18; c.fillStyle="#0008"; rr(c,x,y,bw,10,5); c.fill(); c.fillStyle=timeLeft<10?"#FF5C7A":"#FFC94A"; rr(c,x,y,bw*Math.max(0,timeLeft/TL),10,5); c.fill(); }
+    shots.forEach(s=>{ const p=Math.min(1,s.t); const x=s.x+(s.tx-s.x)*p, y=s.y+(s.ty-s.y)*p-Math.sin(p*Math.PI)*80; const col=s.good?"#FFC94A":"#C06BFF";
+      for(let i=0;i<6;i++){ c.globalAlpha=1-i/6; c.fillStyle=col; c.beginPath(); c.arc(x-(s.tx-s.x)*.02*i,y-(s.ty-s.y)*.02*i+i*2,(14-i*2),0,7); c.fill(); } c.globalAlpha=1;
+      c.fillStyle="#fff"; c.font=`800 14px "JetBrains Mono", monospace`; c.textAlign="center"; c.textBaseline="middle"; c.fillText(s.good?"{ }":"!",x,y); });
+    fx.draw(c);
+  }
+  loop((dt,T)=>{
+    if(!pause&&cur){ timeLeft-=dt; if(timeLeft<=0){ pause=true; inp.disabled=true; $("#fire").disabled=true; monsterHits(); } }
+    shots.forEach(s=>{ s.t+=dt*1.6; }); shots=shots.filter(s=>{ if(s.t>=1){ onShotArrive(s); return false; } return true; });
+    flinch=Math.max(0,flinch-dt*1.5); attack=Math.max(0,attack-dt*1.5); fx.update(dt); draw(T);
+  });
+  inp.disabled=true;
+  overlay(`<h2>Қате монстрі</h2><p>Монстр CSS кодтарын бұзып тастады! Әр қатені түзетіп, оған шабуыл жаса.</p>
+    <ul class="how"><li>Бұзылған код енгізу жолында тұр. Қатесін тауып, түзет.</li><li>Дұрыс түзетсең, монстрға оқ атылады. Неғұрлым тез түзетсең, соғұрлым көп ұпай аласың.</li><li>Уақыт бітсе, монстр саған шабуыл жасайды. Монстрдың 8 жүрегі бар.</li></ul>`,
+    [{label:"Шайқас! ⚔",cls:"gold",fn:()=>nextBug()}]);
+}
+
+/* ================= MAP ================= */
+const GAMES=[
+  {id:"bridge",name:"Ереже көпірі",desc:"Ереже бөліктерінен көпір сал",fn:gameBridge,x:150,y:440,col:"#2DD4BF"},
+  {id:"shooter",name:"Селектор тиры",desc:"Селектор таңдайтын шарларды ат",fn:gameShooter,x:360,y:300,col:"#FF6B8B"},
+  {id:"catch",name:"Код құлауы",desc:"Кодты дұрыс себетке бағытта",fn:gameCatch,x:560,y:430,col:"#6EC1FF"},
+  {id:"builder",name:"Шебер саяхаты",desc:"CSS жазып, әлемді өзгерт",fn:gameBuilder,x:740,y:270,col:"#7BE07B"},
+  {id:"boss",name:"Қате монстрі",desc:"Қателерді түзетіп, монстрды жең",fn:gameBoss,x:880,y:120,col:"#9B8CFF",boss:true}
+];
+function icon(id,col){
+  if(id==="bridge") return `<rect x="-34" y="-8" width="20" height="12" rx="2" fill="#C98A4B"/><rect x="-11" y="-8" width="22" height="12" rx="2" fill="#C98A4B"/><rect x="14" y="-8" width="20" height="12" rx="2" fill="#C98A4B"/><text x="-24" y="1" text-anchor="middle" font-size="10" font-weight="800" fill="#FFF4DC" font-family="JetBrains Mono">p</text><text x="0" y="1" text-anchor="middle" font-size="10" font-weight="800" fill="#FFF4DC" font-family="JetBrains Mono">{</text><text x="24" y="1" text-anchor="middle" font-size="10" font-weight="800" fill="#FFF4DC" font-family="JetBrains Mono">}</text><path d="M-30 14 q30 14 60 0" stroke="#3FA9F5" stroke-width="4" fill="none"/>`;
+  if(id==="shooter") return `<ellipse cx="-12" cy="-6" rx="13" ry="16" fill="#FF6B8B"/><ellipse cx="14" cy="-10" rx="13" ry="16" fill="#FFC94A"/><path d="M-12 10 v14 M14 6 v18" stroke="#fff" stroke-width="1.5"/><circle cx="0" cy="0" r="22" stroke="#fff" stroke-width="2" fill="none" stroke-dasharray="4 4"/>`;
+  if(id==="catch") return `<rect x="-20" y="-28" width="40" height="26" rx="5" fill="#0A1220" stroke="#FFC94A" stroke-width="2"/><text x="0" y="-10" text-anchor="middle" font-size="12" fill="#FFE8A8" font-family="JetBrains Mono">&lt;p&gt;</text><path d="M-26 8 h52 l-6 18 h-40z" fill="${col}"/>`;
+  if(id==="builder") return `<rect x="-28" y="-6" width="56" height="8" fill="#9A6331"/><path d="M-28 2 v18 M28 2 v18" stroke="#6B4423" stroke-width="5"/><circle cx="16" cy="-26" r="12" fill="#FFC94A"/>`;
+  return `<path d="M-28 20 q-6 -40 28 -46 q34 6 28 46z" fill="#7A3BCB"/><circle cx="-10" cy="-6" r="7" fill="#fff"/><circle cx="10" cy="-6" r="7" fill="#fff"/><circle cx="-9" cy="-5" r="3" fill="#1a0830"/><circle cx="11" cy="-5" r="3" fill="#1a0830"/><text x="0" y="-26" text-anchor="middle" font-size="16" fill="#FFC94A" font-family="JetBrains Mono" font-weight="800">{ }</text>`;
+}
+function unlocked(g){ return !g.boss || GAMES.filter(x=>!x.boss).every(x=>SAVE.stars[x.id]); }
+function showMap(){
+  stopGame();
+  const cur=GAMES.find(g=>!SAVE.stars[g.id]&&unlocked(g))||GAMES[GAMES.length-1];
+  let stars=""; for(let i=0;i<70;i++) stars+=`<circle class="twinkle" style="animation-delay:${(Math.random()*3).toFixed(2)}s" cx="${Math.random()*1000}" cy="${Math.random()*560}" r="${(Math.random()*1.6+.4).toFixed(1)}" fill="#fff"/>`;
+  const path="M"+GAMES.map(g=>`${g.x} ${g.y+30}`).join(" L");
+  const nodes=GAMES.map((g,i)=>{ const lock=!unlocked(g), s=SAVE.stars[g.id]||0;
+    return `<g class="node${lock?" locked":""}" data-i="${i}" tabindex="${lock?-1:0}" role="button" aria-label="${esc(g.name)}${lock?" (құлыпта)":""}" transform="translate(${g.x} ${g.y})">
+      <g class="isl"><g class="float" style="animation-delay:${i*.6}s">
+      <ellipse cx="0" cy="44" rx="78" ry="22" fill="#5A3B23"/><path d="M-78 40 q78 70 156 0z" fill="#4A2F1B"/><ellipse cx="0" cy="36" rx="78" ry="20" fill="${g.boss?"#4B2A6B":"#3E9B55"}"/>
+      <ellipse cx="0" cy="34" rx="62" ry="13" fill="${g.boss?"#5E3585":"#4FB868"}"/>
+      <g transform="translate(0 6)">${lock?`<rect x="-14" y="-12" width="28" height="22" rx="4" fill="#90A8BB"/><path d="M-8 -12 v-8 a8 8 0 0 1 16 0 v8" stroke="#90A8BB" stroke-width="4" fill="none"/>`:icon(g.id,g.col)}</g>
+      </g></g>
+      <text y="96" text-anchor="middle" font-size="19" fill="#EAF2F7">${esc(g.name)}</text>
+      <text y="120" text-anchor="middle" font-size="18" fill="#FFC94A" letter-spacing="3">${"★".repeat(s)}<tspan fill="#2a4058">${"★".repeat(3-s)}</tspan></text>
+    </g>`; }).join("");
+  const allDone=GAMES.every(g=>SAVE.stars[g.id]);
+  app.innerHTML=`<div class="top"><div class="logo"><b>{</b> CSS Шеберханасы <b>}</b></div><span class="sp"></span>
+      <input class="name" id="nm" maxlength="40" placeholder="Атың мен тегің" value="${esc(SAVE.name)}" aria-label="Оқушының аты">
+      <span class="pill">Ұпай <b>${SAVE.score}</b></span></div>
+    <div class="mapbox"><svg viewBox="0 0 1000 580" role="img" aria-label="Ойын картасы">
+      ${stars}<circle cx="900" cy="470" r="70" fill="#1F3A66" opacity=".5"/>
+      <path d="${path}" stroke="#FFC94A" stroke-width="4" stroke-dasharray="2 14" stroke-linecap="round" fill="none" opacity=".7"/>
+      ${nodes}
+      <g transform="translate(${cur.x-60} ${cur.y-20})"><g class="float"><rect x="-16" y="-36" width="32" height="34" rx="10" fill="#2DD4BF"/><rect x="-12" y="-31" width="24" height="14" rx="6" fill="#0A1A28"/><circle cx="-5" cy="-24" r="2.5" fill="#8FF7FF"/><circle cx="5" cy="-24" r="2.5" fill="#8FF7FF"/><text x="0" y="-42" text-anchor="middle" font-size="13" font-weight="800" fill="#FFC94A" font-family="JetBrains Mono">{ }</text></g></g>
+    </svg></div>
+    <div class="cards">${GAMES.map((g,i)=>`<button class="gcard" data-i="${i}" ${unlocked(g)?"":"disabled"} type="button"><span class="n">${i+1}. ${esc(g.name)}</span><span class="d">${unlocked(g)?esc(g.desc):"Алдымен 4 ойынды өт"}</span><span class="s">${"★".repeat(SAVE.stars[g.id]||0)}${"☆".repeat(3-(SAVE.stars[g.id]||0))}</span></button>`).join("")}</div>
+    <div class="foot"><span>${allDone?'<button class="link" id="cert" type="button">Сертификатты ашу</button>':"Барлық 5 ойынды өтсең, сертификат аласың."}</span><span id="rz"><button class="link" id="reset" type="button">Прогресті тазалау</button></span></div>`;
+  const open=i=>{ const g=GAMES[i]; if(!unlocked(g)) return; sfx("tick"); g.fn(); };
+  $$(".node").forEach(n=>{ n.addEventListener("click",()=>open(+n.dataset.i)); n.addEventListener("keydown",e=>{ if(e.key==="Enter"||e.key===" "){e.preventDefault();open(+n.dataset.i);} }); });
+  $$(".gcard").forEach(b=>b.addEventListener("click",()=>open(+b.dataset.i)));
+  $("#nm").addEventListener("input",e=>{SAVE.name=e.target.value.trim();persist();});
+  const cb=$("#cert"); if(cb) cb.onclick=certificate;
+  $("#reset").onclick=()=>{ $("#rz").innerHTML=`Бәрі өшеді. <button class="link" id="rn" type="button">Жоқ</button> · <button class="link" id="ry" type="button">Иә, тазалау</button>`; $("#rn").onclick=showMap; $("#ry").onclick=()=>{SAVE={name:SAVE.name,score:0,stars:{}};persist();showMap();}; };
+  window.scrollTo(0,0);
+}
+function certificate(){
+  const st=GAMES.reduce((s,g)=>s+(SAVE.stars[g.id]||0),0); const d=new Date();
+  app.innerHTML=`<div class="cert"><div class="cert-in"><div class="sm">Сертификат · информатика</div><h2>CSS шебері</h2><div>Бұл сертификат</div>
+    <div class="who">${esc(SAVE.name||"Оқушы")}</div><div class="st">${"★".repeat(st)}</div>
+    <p>«CSS» тақырыбының барлық 5 ойынын өтіп, Қате монстрін жеңгені үшін берілді. Жиналған ұпай: <b>${SAVE.score}</b>.</p>
+    <div class="sm">${String(d.getDate()).padStart(2,"0")}.${String(d.getMonth()+1).padStart(2,"0")}.${d.getFullYear()}</div></div></div>
+    <div style="text-align:center;margin-top:16px"><button class="btn" id="bk" type="button">Картаға</button></div>`;
+  $("#bk").onclick=showMap; window.scrollTo(0,0);
+}
+showMap();
+})();
+</script>
+
+</body></html>
